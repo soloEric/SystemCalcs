@@ -1,0 +1,16 @@
+{
+  "name": "syscalcs",
+  "version": "1.0.0",
+  "description": "PV System Calculation Module",
+  "main": "test.js",
+  "scripts": {
+    "test": "mocha --reporter spec"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chai": "^4.2.0",
+    "csvtojson": "^2.0.10",
+    "mocha": "^7.1.0"
+  }
+}
