@@ -1,0 +1,80 @@
+[
+  {
+    "wire_gauge": "#14",
+    "co_dc_resist": "3.1",
+    "alum_dc_resist": "5.17",
+    "alum_ac_resist": "NO"
+  },
+  {
+    "wire_gauge": "#12",
+    "co_dc_resist": "2",
+    "alum_dc_resist": "3.25",
+    "alum_ac_resist": "2.8"
+  },
+  {
+    "wire_gauge": "#10",
+    "co_dc_resist": "1.2",
+    "alum_dc_resist": "2.04",
+    "alum_ac_resist": "1.8"
+  },
+  {
+    "wire_gauge": "#8",
+    "co_dc_resist": "0.78",
+    "alum_dc_resist": "1.28",
+    "alum_ac_resist": "1.1"
+  },
+  {
+    "wire_gauge": "#6",
+    "co_dc_resist": "0.49",
+    "alum_dc_resist": "0.808",
+    "alum_ac_resist": "0.72"
+  },
+  {
+    "wire_gauge": "#4",
+    "co_dc_resist": "0.31",
+    "alum_dc_resist": "0.508",
+    "alum_ac_resist": "0.4"
+  },
+  {
+    "wire_gauge": "#3",
+    "co_dc_resist": "0.25",
+    "alum_dc_resist": "0.403",
+    "alum_ac_resist": "0.37"
+  },
+  {
+    "wire_gauge": "#2",
+    "co_dc_resist": "0.2",
+    "alum_dc_resist": "0.319",
+    "alum_ac_resist": "0.3"
+  },
+  {
+    "wire_gauge": "#1",
+    "co_dc_resist": "0.16",
+    "alum_dc_resist": "0.253",
+    "alum_ac_resist": "0.25"
+  },
+  {
+    "wire_gauge": "1/0",
+    "co_dc_resist": "0.12",
+    "alum_dc_resist": "0.201",
+    "alum_ac_resist": "0.2"
+  },
+  {
+    "wire_gauge": "2/0",
+    "co_dc_resist": "0.1",
+    "alum_dc_resist": "0.159",
+    "alum_ac_resist": "0.16"
+  },
+  {
+    "wire_gauge": "3/0",
+    "co_dc_resist": "0.079",
+    "alum_dc_resist": "0.126",
+    "alum_ac_resist": "0.14"
+  },
+  {
+    "wire_gauge": "4/0",
+    "co_dc_resist": "0.063",
+    "alum_dc_resist": "0.1",
+    "alum_ac_resist": "0.11"
+  }
+]
