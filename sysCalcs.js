@@ -11,7 +11,12 @@ module.exports = {
 
     },
 
-    trenchingCalc: function () {
+    trenchVoltageDrop: function () {
+
+    },
+
+    // Oregon volt drop per segment
+    voltageDrop: function () {
 
     },
 
@@ -48,7 +53,7 @@ module.exports = {
     },
 }
 
-// for solarOCPDCalc to call
+// solarOCPDCalc calls this
 function determineOCPD(num_inverters, inv_current_output) {
     return Math.ceil(((num_inverters * inv_current_output) * 1.25) / 5) * 5;
 }
