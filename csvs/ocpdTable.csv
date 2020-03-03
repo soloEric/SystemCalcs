@@ -1,4 +1,4 @@
-pv_backfeed,ac_disco,tap_ac_disco,wire_size,tap_wire_size,ground_wire_size,ac_conduit_calc,pv_breaker_common_size,fused_ac_disco_fused_size,standard_breaker
+pvBackfeed,acDisco,tapAcDisco,wireSize,tapWireSize,groundWireSize,acConduitCalc,pvBreakerCommonSize,fusedAcDiscoFusedSize,standardBreakerSize
 5,30,60,10 AWG,6 AWG,10 AWG,"CONDUIT:  3/4"" LIQUID TIGHT OR EMT",20,20,15
 10,30,60,10 AWG,6 AWG,10 AWG,"CONDUIT:  3/4"" LIQUID TIGHT OR EMT",20,20,15
 15,30,60,10 AWG,6 AWG,10 AWG,"CONDUIT:  3/4"" LIQUID TIGHT OR EMT",20,20,15

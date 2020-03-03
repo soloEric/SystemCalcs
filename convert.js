@@ -1,6 +1,6 @@
 const csv = require("csvtojson");
 const fs = require("fs");
 (async () => {
-  const jsonArray = await csv().fromFile("./gauge_table.csv");
-  fs.writeFileSync("./gaugeTable.json", JSON.stringify(jsonArray, null, 2));
+  const jsonArray = await csv().fromFile("./csvs/ocpdTable.csv");
+  fs.writeFileSync("./ocpdTable.json", JSON.stringify(jsonArray, null, 2));
 })();

@@ -1,5 +1,5 @@
-wire_gauge,co_dc_resist,co_dc_resist,alum_dc_resist,alum_ac_resist
-#14,3.14,3.1,5.17,NO
+wireGauge,CopperDcResist,CopperAcResist,AluminumDcResist,AluminumAcResist
+#14,3.14,3.1,5.17,NULL
 #12,1.98,2,3.25,2.8
 #10,1.24,1.2,2.04,1.8
 #8,0.778,0.78,1.28,1.1

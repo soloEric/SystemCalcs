@@ -1,60 +1,128 @@
-// may replace these values with table lookup
-const ocpd_table = require('./ocpdTable.json');
+// common acronyms: 
+// ocpd = overcurrent protection device - refers to the breaker rating
+const ocpdTable = require('./ocpdTable.json');
+const gaugeTable = require('./gaugeTable.json');
+const possibleGauges = ["#14", "#12", "#10", "#8", "#6", "#4", "#3", "#2", "#1", "1/0", "2/0", "3/0", "4/0"];
 
 module.exports = {
 
-    conductorCalc: function () {
+    CalculateConductor: function () {
 
     },
 
-    conduitCalc: function () {
+    CalculateConduit: function () {
 
     },
 
-    trenchVoltageDrop: function () {
+    /**
+     * Makes a decision on wire gauge for current segment
+     * returns the first wire gauge that falls under the accepted voltage drop percentage
+     * based on the inverter/module object
+     * 
+     * @param {Inverter Object} inverter 
+     * @param {Module Object} module
+     * @param {Integer} dist distance rounded to the nearest foot
+     * @param {Integer} segment indicates which segment the voltage calcs are for, switch statement anything greater than 4 is always ac
+     * all are ac if inverter is micro, must be 1 or greater
+     * @param {Boolean} copperBool is the wire copper or not? Comes from best practices
+     */
+    CalculateVoltageDrop: function (numModules, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool) {
+        if (segment < 1) throw "Invalid segment number: must be 1 or greater";
 
+        let maxOutputVolt;
+        let maxOutputCurrent;
+        let dcBool = false;
+        if (segment < 4 && !(inverter.manufacturer === "Enphase")) dcBool = true;
+        // FIXME: This section is unfinished
+        if (inverter.type === "Micro") {
+            if (segment < 4 && inverter.manufacturer === "Enphase") throw "Use Enphase Voltage Drop Values";
+            maxOutputVolt = inverter.max_output_voltage;
+            maxOutputCurrent = inverter.max_output_current * numInverters;
+        } else if (inverter.type === "String" && segment < 4) {
+            maxOutputVolt = solarModule.mpp_voltage * numModules;
+            maxOutputCurrent = solarModule.short_circuit_current;
+        } else {
+            // optimized
+            maxOutputVolt = inverter.nominal_dc_input_voltage;
+            maxOutputCurrent = optimizer.output_current;
+        }
+
+        for (let i = 0; i < possibleGauges.length; ++i) {
+            let voltageDropPercent = GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, possibleGauges[i], copperBool, dcBool);
+            console.log(voltageDropPercent);
+            if (voltageDropPercent <= inverter.max_voltage_drop) return possibleGauges[i];
+        }
     },
 
-    // Oregon volt drop per segment
-    voltageDrop: function () {
-
-    },
-
-    getACDiscoSize: function (num_inverters, inv_current_output, tap_bool) {
-        const ocpd = determineOCPD(num_inverters, inv_current_output);
+    GetACDiscoSize: function (numInverters, invCurrentOutput, tapBool) {
+        const ocpd = DetermineOcpd(numInverters, invCurrentOutput);
         // console.log(ocpd);
-        const j_ocpd = ocpd_table.find(function (e) {
-            return e.pv_backfeed === `${ocpd}`;
+        const oOcpd = ocpdTable.find(function (e) {
+            return e.pvBackfeed === `${ocpd}`;
         });
-        if (tap_bool) return parseInt(j_ocpd.tap_ac_disco);
-        return parseInt(j_ocpd.ac_disco);
+        if (tapBool) return parseInt(oOcpd.tapAcDisco);
+        return parseInt(oOcpd.acDisco);
     },
 
     /**
      * 
-     * @param {Integer} num_inverters number of inverters
-     * @param {Float} inv_current_output value from inverter object
-     * @param {Boolean} fused_bool is the disconnect fused or no
-     * @param {Boolean} common_breaker_bool if company doesn't want to use breakers that are multiples of 5, this value is true
+     * @param {Integer} numInverters number of inverters
+     * @param {Float} invCurrentOutput value from inverter object
+     * @param {Boolean} fusedBool is the disconnect fused or no
+     * @param {Boolean} commonBreakerBool if company doesn't want to use breakers that are multiples of 5, this value is true
      */
-    solarOCPDCalc: function (num_inverters, inv_current_output, fused_bool, common_breaker_bool) {
-        const ocpd = determineOCPD(num_inverters, inv_current_output);
+    CalculateSolarOcpd: function (numInverters, invCurrentOutput, fusedBool, commonBreakerBool) {
+        const ocpd = DetermineOcpd(numInverters, invCurrentOutput);
         // console.log(ocpd);
-        const j_ocpd = ocpd_table.find(function (e) {
-            return e.pv_backfeed === `${ocpd}`;
+        const oOcpd = ocpdTable.find(function (e) {
+            return e.pvBackfeed === `${ocpd}`;
         });
 
-        if (fused_bool || common_breaker_bool) {
-            return parseInt(j_ocpd.pv_breaker_common_size);
+        if (fusedBool || commonBreakerBool) {
+            return parseInt(oOcpd.pvBreakerCommonSize);
         } else {
-            return parseInt(j_ocpd.standard_breaker);
+            return parseInt(oOcpd.standardBreakerSize);
         }
 
     },
 }
 
 // solarOCPDCalc calls this
-function determineOCPD(num_inverters, inv_current_output) {
-    return Math.ceil(((num_inverters * inv_current_output) * 1.25) / 5) * 5;
+function DetermineOcpd(numInverters, invCurrentOutput) {
+    return Math.ceil(((numInverters * invCurrentOutput) * 1.25) / 5) * 5;
 }
 
+/**
+ * returns float of percent voltage drop for current section
+ * @param {Integer} dist 
+ * @param {Integer} segCurrent 
+ * @param {Integer} segVolt
+ * @param {String} gauge ex: #12, 1/0
+ * @param {Boolean} copperWire refers to either "copper" or "aluminum"
+ * @param {Boolean} dcBool indicates whether the segment is runnign dc or ac
+ */
+function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWire, dcBool) {
+    const oGauge = gaugeTable.find(function (e) {
+        return e.wireGauge === `${gauge}`;
+    });
+    let ohms = 0;
+    if (copperWire) {
+        // console.log(oGauge['CopperDcResist']);
+        if (dcBool) ohms = parseFloat(oGauge['CopperDcResist']);
+        else ohms = parseFloat(oGauge['CopperAcResist']);
+    } else {
+        if (dcBool) ohms = parseFloat(oGauge['AluminumDcResist']);
+        else ohms = parseFloat(oGauge['AluminumAcResist']);
+    }
+    console.log("segCurrent: ", segCurrent);
+    console.log("SegVolt: ", segVolt)
+    console.log("Ohms = ", ohms);
+    if (isNaN(ohms)) return 100.0;
+
+    // v = segCurrent * resistance
+    const resistance = (ohms / 1000) * dist * 2;
+    const vDrop = segCurrent * resistance;
+    console.log("Voltage Drop: ", vDrop);
+
+    return (1 - ((segVolt - vDrop) / segVolt)) * 100;
+}
