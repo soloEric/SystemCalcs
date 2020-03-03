@@ -19,6 +19,8 @@ module.exports = {
      * returns the first wire gauge that falls under the accepted voltage drop percentage
      * based on the inverter/module object
      * 
+     * @param {Integer} numModules
+     * @param {Integer} numInverters
      * @param {Inverter Object} inverter 
      * @param {Module Object} module
      * @param {Integer} dist distance rounded to the nearest foot
@@ -31,18 +33,23 @@ module.exports = {
 
         let maxOutputVolt;
         let maxOutputCurrent;
-        let dcBool = false;
-        if (segment < 4 && !(inverter.manufacturer === "Enphase")) dcBool = true;
+        let dcBool;
+        if (inverter.manufacturer === "Enphase") dcBool = false;
         // FIXME: This section is unfinished
         if (inverter.type === "Micro") {
             if (segment < 4 && inverter.manufacturer === "Enphase") throw "Use Enphase Voltage Drop Values";
             maxOutputVolt = inverter.max_output_voltage;
+            maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
+            console.log(maxOutputCurrent, " should be 18.24 on wire gauge test 3");
+        } else if (inverter.type === "String" && segment > 3) {
+            dcBool = false;
+            // maxOutputVolt = solarModule.mpp_voltage * numModules;
+            // maxOutputCurrent = solarModule.short_circuit_current;
+            maxOutputVolt = inverter.max_output_voltage;
             maxOutputCurrent = inverter.max_output_current * numInverters;
-        } else if (inverter.type === "String" && segment < 4) {
-            maxOutputVolt = solarModule.mpp_voltage * numModules;
-            maxOutputCurrent = solarModule.short_circuit_current;
         } else {
             // optimized
+            dcBool = true;
             maxOutputVolt = inverter.nominal_dc_input_voltage;
             maxOutputCurrent = optimizer.output_current;
         }
@@ -106,8 +113,9 @@ function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWire, dcB
         return e.wireGauge === `${gauge}`;
     });
     let ohms = 0;
+    // console.log(dcBool);
     if (copperWire) {
-        // console.log(oGauge['CopperDcResist']);
+        // console.log(oGauge['CopperAcResist']);
         if (dcBool) ohms = parseFloat(oGauge['CopperDcResist']);
         else ohms = parseFloat(oGauge['CopperAcResist']);
     } else {
@@ -121,6 +129,7 @@ function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWire, dcB
 
     // v = segCurrent * resistance
     const resistance = (ohms / 1000) * dist * 2;
+    console.log("Resistance: ", resistance);
     const vDrop = segCurrent * resistance;
     console.log("Voltage Drop: ", vDrop);
 

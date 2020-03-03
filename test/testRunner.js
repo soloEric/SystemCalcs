@@ -35,7 +35,7 @@ describe("System Calc Tests:", () => {
         done();
     });
 
-    it("Get wire gauge test 1", done => {
+    it("Get wire gauge test 1: Solaredge trench before inverter", done => {
         inverter = { // SE 3800
             max_output_voltage: 240,
             max_output_current: 16,
@@ -50,7 +50,50 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        console.log(system.CalculateVoltageDrop(15, 1, inverter, solarModule, optimizer, 200, 3, true));
+        let wire = system.CalculateVoltageDrop(15, 1, inverter, solarModule, optimizer, 200, 3, true);
+        console.log(wire);
+        expect(wire).equals("#10");
+        done();
+    });
+    it("Get wire gauge test 2: Solaredge trench after inverter", done => {
+        inverter = { // SE 3800
+            max_output_voltage: 240,
+            max_output_current: 16,
+            nominal_dc_input_voltage: 380,
+            max_voltage_drop: 3.0,
+            type: "String"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.CalculateVoltageDrop(15, 1, inverter, solarModule, optimizer, 200, 4, true);
+        console.log(wire);
+        expect(wire).equals("#8");
+        done();
+    });
+
+    it("Get wire gauge test 3: Solaredge trench after inverter", done => {
+        inverter = { // SE 3800
+            max_output_voltage: 240,
+            max_output_current: 2.28,
+            nominal_dc_input_voltage: 380,
+            max_voltage_drop: 3.0,
+            type: "Micro"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.CalculateVoltageDrop(15, 8, inverter, solarModule, optimizer, 200, 4, true);
+        console.log(wire);
+        expect(wire).equals("#8");
         done();
     });
 
