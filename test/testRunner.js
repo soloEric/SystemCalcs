@@ -41,7 +41,7 @@ describe("System Calc Tests:", () => {
             max_output_current: 16,
             nominal_dc_input_voltage: 380,
             max_voltage_drop: 3.0,
-            type: "String"
+            type: "Optimized"
         };
         solarModule = { // Axitec AC-280M/156-60S
             mpp_voltage: 31.8,
@@ -50,7 +50,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.CalculateVoltageDrop(15, 1, inverter, solarModule, optimizer, 200, 3, true);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true);
         console.log(wire);
         expect(wire).equals("#10");
         done();
@@ -61,7 +61,7 @@ describe("System Calc Tests:", () => {
             max_output_current: 16,
             nominal_dc_input_voltage: 380,
             max_voltage_drop: 3.0,
-            type: "String"
+            type: "Optimized"
         };
         solarModule = { // Axitec AC-280M/156-60S
             mpp_voltage: 31.8,
@@ -70,14 +70,14 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.CalculateVoltageDrop(15, 1, inverter, solarModule, optimizer, 200, 4, true);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 4, true);
         console.log(wire);
         expect(wire).equals("#8");
         done();
     });
 
-    it("Get wire gauge test 3: Solaredge trench after inverter", done => {
-        inverter = { // SE 3800
+    it("Get wire gauge test 3: AP Sys trench after inverter", done => {
+        inverter = { // AP Sys YC600
             max_output_voltage: 240,
             max_output_current: 2.28,
             nominal_dc_input_voltage: 380,
@@ -91,9 +91,93 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.CalculateVoltageDrop(15, 8, inverter, solarModule, optimizer, 200, 4, true);
+        let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 4, true);
         console.log(wire);
-        expect(wire).equals("#8");
+        expect(wire).equals("#6");
+        done();
+    });
+
+    it("Get wire gauge test 4: AP sys trench after inverter", done => {
+        inverter = { // AP Sys YC600
+            max_output_voltage: 240,
+            max_output_current: 2.28,
+            nominal_dc_input_voltage: 380,
+            max_voltage_drop: 3.0,
+            type: "Micro"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 4, true);
+        console.log(wire);
+        expect(wire).equals("#3");
+        done();
+    });
+
+    it("Get wire gauge test 5: AP sys trench before inverter", done => {
+        inverter = { // AP Sys YC600
+            max_output_voltage: 240,
+            max_output_current: 2.28,
+            nominal_dc_input_voltage: 380,
+            max_voltage_drop: 3.0,
+            type: "Micro"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 3, true);
+        console.log(wire);
+        expect(wire).equals("#3");
+        done();
+    });
+
+    it("Get wire gauge test 6: Sunny Boy trench before inverter", done => {
+        inverter = { // Sunny Boy 3.0
+            max_output_voltage: 240,
+            max_output_current: 12.5,
+            nominal_dc_input_voltage: 480,
+            max_voltage_drop: 3.0,
+            type: "String"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 3, true);
+        console.log(wire);
+        expect(wire).equals("#10");
+        done();
+    });
+
+    it("Get wire gauge test 7: Sunny Boy trench before inverter w/ multi string", done => {
+        inverter = { // Sunny Boy 3.0
+            max_output_voltage: 240,
+            max_output_current: 12.5,
+            nominal_dc_input_voltage: 480,
+            max_voltage_drop: 3.0,
+            type: "String"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            mpp_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.GetSegmentWireSize([11, 10], 1, inverter, solarModule, optimizer, 300, 3, true);
+        console.log(wire);
+        expect(wire).equals("#10");
         done();
     });
 
