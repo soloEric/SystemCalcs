@@ -4,24 +4,34 @@
 const ocpdTable = require('./ocpdTable.json');
 const gaugeTable = require('./gaugeTable.json');
 const possibleGauges = ["#14", "#12", "#10", "#8", "#6", "#4", "#3", "#2", "#1", "1/0", "2/0", "3/0", "4/0"];
+const defaultWireDist = 10;
 // FIXME: add wire descriptor table, 
 
 module.exports = {
-    /**
-     * 
-     * @param {*} numSegments 
-     * @param {*} trenchSegments 
-     * @param {*} distPerSegment 
-     * @param {*} numInverters 
-     * @param {*} inverter 
-     * @param {*} modulesPerString 
-     * @param {*} solarModule 
-     * @param {*} optimizer 
-     * @param {*} copperBool 
-     * @param {*} interconnection
-     */
+   /**
+    * 
+    * @param {*} numSegments 
+    * @param {*} numStrings 
+    * @param {*} trenchSegments 
+    * @param {*} distPerSegment 
+    * @param {*} numInverters 
+    * @param {*} inverter 
+    * @param {*} modulesPerString 
+    * @param {*} solarModule 
+    * @param {*} optimizer 
+    * @param {*} copperBool 
+    * @param {*} interconnection 
+    */
     GetWireSchedule: function (numSegments, trenchSegments, distPerSegment, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, interconnection) {
-
+        // numStrings = modulesPerString.length
+        // if segment dc, segment will have 3 conductors, pos, neg, ground
+        // after seg 1 will need conductor label
+        // numDCconductors = numStrings * 2 + ground
+        // (microInverter) numAcConductors = numStrings * (l1, l3, n, g)
+        // segment 1 has pos, neg, ground, no conduit
+        // segment 2-3 has pos, neg, ground, conduit
+        // after inverter has l1(pos) l2(neg), neutral, ground, conduit
+        // if numStrings = 1, then there will be one lest segment and dc will go from 1,2 after 3 will be ac
         let wireSchedule = [];
         let material;
         if (copperBool) material = "Copper";
@@ -36,21 +46,26 @@ module.exports = {
             // FIXME: figure out number of wires in scheduleItem
             for (let j = 0; j < numWiresInSegment; ++j) {
                 let numWires, gauge, wireType, wireTypeAlt, label;
+                gauge = this.GetSegmentWireSize();
                 wires.push(new Wire(numWires, gauge, wireType, wireTypeAlt, material, label))
             } 
+            let groundGauge, groundWireType, groundWireTypeAlt;
+            groundGauge = this.GetSegmentWireSize()
             wires.push(new Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
+            altInputString = this.CalculateConduit(wires);
             scheduleItem = new WireScheduleItem(i, wires, altInputString);
             wireSchedule.push(scheduleItem);
         }
     },
 
-    CalculateConductor: function () {
+    // calculate the number of wires in a segment
+    CalculateNumWires: function (segment) {
 
     },
 
     // given a list of wires, calculate the conduit fill and determine conduit size
-    CalculateConduit: function () {
+    CalculateConduit: function (wires) {
 
     },
 
@@ -74,27 +89,30 @@ module.exports = {
      * @param {Boolean} copperBool is the wire copper or not? Comes from best practices
      */
     GetSegmentWireSize: function (modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool) {
+        let firstSegAfterInv;
+        if (modulesPerString.length > 1) firstSegAfterInv = 4;
+        else firstSegAfterInv = 3; 
         if (segment < 1) throw "Invalid segment number: must be 1 or greater";
         if (!dist || !segment || !copperBool) throw "missing vital field: distance, segment number or copperBool";
-
+        if (segment < 1) throw "Segment must be 1 or greater";
         let maxOutputVolt;
         let maxOutputCurrent;
         let dcBool;
         if (inverter == null || inverter == undefined) throw "Missing inverter object";
         if (inverter.type === "Micro") {
             // FIXME: replace throw with call to Enphase calc
-            if (segment < 4 && inverter.manufacturer === "Enphase") throw "Use Enphase Voltage Drop Values";
+            if (segment < firstSegAfterInv && inverter.manufacturer === "Enphase") throw "Use Enphase Voltage Drop Values";
             dcBool = false;
             if (numInverters == null || numInverters == undefined) throw "Missing numInverters field";
             maxOutputVolt = inverter.max_output_voltage;
             maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
-        } else if (inverter.type === "String" && segment < 4) {
+        } else if (inverter.type === "String" && segment < firstSegAfterInv) {
             dcBool = true;
             if (solarModule == null || solarModule == undefined) throw "Module object missing";
             if (modulesPerString == null || modulesPerString == undefined) throw "Array of string sizes missing";
-            maxOutputVolt = solarModule.mpp_voltage * getLowest(modulesPerString);
+            maxOutputVolt = solarModule.open_circuit_voltage * getLowest(modulesPerString);
             maxOutputCurrent = solarModule.short_circuit_current;
-        } else if (inverter.type === "Optimized" && segment < 4) {
+        } else if (inverter.type === "Optimized" && segment < firstSegAfterInv) {
             // optimized
             if (optimizer == null || optimizer == undefined) throw "Optimizer is required"
             dcBool = true;
@@ -220,6 +238,15 @@ class WireScheduleItem {
         this.wires = wires;
         this.altInput = fixNull(altInput);
     }
+
+    getTotalNumWires() {
+        let total = 0;
+        for (let i = 0; i < this.wires.length; ++i) {
+            total += wires[i].getNumWires();
+        }
+        return total;
+    }
+
     _fixNull(item) {
         if (item == null || item == undefined) return "";
         else return item;
@@ -245,6 +272,10 @@ class Wire {
         this.label = fixNull(label);
     }
     
+    getNumWires() {
+        return this.number;
+    }
+
     _fixNull(item) {
         if (item == null || item == undefined) return "";
         else return item;

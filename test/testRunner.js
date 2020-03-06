@@ -44,13 +44,13 @@ describe("System Calc Tests:", () => {
             type: "Optimized"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 2, true);
         console.log(wire);
         expect(wire).equals("#10");
         done();
@@ -64,13 +64,13 @@ describe("System Calc Tests:", () => {
             type: "Optimized"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 4, true);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true);
         console.log(wire);
         expect(wire).equals("#8");
         done();
@@ -85,13 +85,13 @@ describe("System Calc Tests:", () => {
             type: "Micro"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 4, true);
+        let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 3, true);
         console.log(wire);
         expect(wire).equals("#6");
         done();
@@ -106,7 +106,7 @@ describe("System Calc Tests:", () => {
             type: "Micro"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
@@ -127,7 +127,7 @@ describe("System Calc Tests:", () => {
             type: "Micro"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
@@ -148,13 +148,13 @@ describe("System Calc Tests:", () => {
             type: "String"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 3, true);
+        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 2, true);
         console.log(wire);
         expect(wire).equals("#10");
         done();
@@ -169,7 +169,7 @@ describe("System Calc Tests:", () => {
             type: "String"
         };
         solarModule = { // Axitec AC-280M/156-60S
-            mpp_voltage: 31.8,
+            open_circuit_voltage: 31.8,
             short_circuit_current: 9.75
         };
         optimizer = { // p320
