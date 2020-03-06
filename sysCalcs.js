@@ -3,25 +3,36 @@
 
 const ocpdTable = require('./ocpdTable.json');
 const gaugeTable = require('./gaugeTable.json');
-const possibleGauges = ["#14", "#12", "#10", "#8", "#6", "#4", "#3", "#2", "#1", "1/0", "2/0", "3/0", "4/0"];
+// possibleGauges only reflects what is usual for a residential solar system
+const possibleGauges = ["14 AWG", "12 AWG", "10 AWG", "8 AWG", "6 AWG", "4 AWG", "3 AWG", "2 AWG", "1 AWG", "1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG"];
 const defaultWireDist = 10;
 // FIXME: add wire descriptor table, 
 
 module.exports = {
-   /**
-    * 
-    * @param {*} numSegments 
-    * @param {*} numStrings 
-    * @param {*} trenchSegments 
-    * @param {*} distPerSegment 
-    * @param {*} numInverters 
-    * @param {*} inverter 
-    * @param {*} modulesPerString 
-    * @param {*} solarModule 
-    * @param {*} optimizer 
-    * @param {*} copperBool 
-    * @param {*} interconnection 
-    */
+
+    CalculateWholeSystem: function () {
+        // get interconnection type
+        // get extra equipment if needed
+        // ? determine number of segments
+        // Get Wire Schedule
+        // Get fused/solar breaker size
+        // if derate, calculate new main
+    },
+
+    /**
+     * 
+     * @param {*} numSegments 
+     * @param {*} numStrings 
+     * @param {*} trenchSegments 
+     * @param {*} distPerSegment 
+     * @param {*} numInverters 
+     * @param {*} inverter 
+     * @param {Array} modulesPerString integers
+     * @param {*} solarModule 
+     * @param {*} optimizer 
+     * @param {*} copperBool 
+     * @param {*} interconnection 
+     */
     GetWireSchedule: function (numSegments, trenchSegments, distPerSegment, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, interconnection) {
         // numStrings = modulesPerString.length
         // if segment dc, segment will have 3 conductors, pos, neg, ground
@@ -32,40 +43,65 @@ module.exports = {
         // segment 2-3 has pos, neg, ground, conduit
         // after inverter has l1(pos) l2(neg), neutral, ground, conduit
         // if numStrings = 1, then there will be one lest segment and dc will go from 1,2 after 3 will be ac
-        let wireSchedule = [];
+        let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
+        const wireSchedule = [];
+        const vDropPrintouts = [];
         let material;
         if (copperBool) material = "Copper";
         else material = "Aluminum";
 
         for (let i = 0; i < numSegments; ++i) {
             let wires = [];
-            
+
             // if enphase
             // else do normal
 
+            numWiresInSegment = this.CalculateNumWires(i, modulesPerString);
             // FIXME: figure out number of wires in scheduleItem
             for (let j = 0; j < numWiresInSegment; ++j) {
+
+                //wire type comes from either company best practice or lookup table
                 let numWires, gauge, wireType, wireTypeAlt, label;
                 gauge = this.GetSegmentWireSize();
-                wires.push(new Wire(numWires, gauge, wireType, wireTypeAlt, material, label))
-            } 
+                wires.push(new Wire(numWires, gauge, wireType, wireTypeAlt, material, label));
+                
+            }
             let groundGauge, groundWireType, groundWireTypeAlt;
             groundGauge = this.GetSegmentWireSize()
             wires.push(new Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
-            altInputString = this.CalculateConduit(wires);
+            altInputString = this.CalculateConduitSize(wires);
             scheduleItem = new WireScheduleItem(i, wires, altInputString);
             wireSchedule.push(scheduleItem);
         }
     },
 
     // calculate the number of wires in a segment
-    CalculateNumWires: function (segment) {
+    CalculateNumWires: function (segment, modulesPerString) {
+        let firstSegAfterInv;
+        if (modulesPerString.length > 1) firstSegAfterInv = 4;
+        else firstSegAfterInv = 3;
+
+        if (segment == 1) {
+
+        }
+        else if (segment > 1 && segment < firstSegAfterInv) { // segment 2 or 3
+
+        } else {
+
+        }
 
     },
 
+    // for MVP we are using ocpdTable for generic temperature derate calcs
     // given a list of wires, calculate the conduit fill and determine conduit size
-    CalculateConduit: function (wires) {
+    // needs gauge size table
+    CalculateConduitSize: function (wires) {
+        // for each wire
+        // get number of wires per type multiplyed by the gauge area to get area per wiretype
+        // total all areas per wire type
+        // lookup table to find conduit size based on total area
+        // return conduit size
 
     },
 
@@ -87,18 +123,25 @@ module.exports = {
      * @param {Integer} segment indicates which segment the voltage calcs are for, switch statement anything greater than 4 is always ac
      * all are ac if inverter is micro, must be 1 or greater
      * @param {Boolean} copperBool is the wire copper or not? Comes from best practices
+     * @param {Boolean} tapBool
      */
-    GetSegmentWireSize: function (modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool) {
+    GetSegmentWireSize: function (modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, tapBool) {
+        if (segment < 1) throw "Invalid segment number: must be 1 or greater";
+        if (!segment || !copperBool) throw "missing vital field: segment number or copperBool";
+        if (segment < 1) throw "Segment must be 1 or greater";
+        if (inverter == null || inverter == undefined) throw "Missing inverter object";
+
         let firstSegAfterInv;
         if (modulesPerString.length > 1) firstSegAfterInv = 4;
-        else firstSegAfterInv = 3; 
-        if (segment < 1) throw "Invalid segment number: must be 1 or greater";
-        if (!dist || !segment || !copperBool) throw "missing vital field: distance, segment number or copperBool";
-        if (segment < 1) throw "Segment must be 1 or greater";
+        else firstSegAfterInv = 3;
+
+        if (dist == null || dist == undefined) dist = defaultWireDist;
+
+        let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
         let maxOutputVolt;
         let maxOutputCurrent;
         let dcBool;
-        if (inverter == null || inverter == undefined) throw "Missing inverter object";
+
         if (inverter.type === "Micro") {
             // FIXME: replace throw with call to Enphase calc
             if (segment < firstSegAfterInv && inverter.manufacturer === "Enphase") throw "Use Enphase Voltage Drop Values";
@@ -126,19 +169,46 @@ module.exports = {
             maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
         }
 
+        let pair;
         for (let i = 0; i < possibleGauges.length; ++i) {
             let voltageDropPercent = GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, possibleGauges[i], copperBool, dcBool);
             // console.log(voltageDropPercent);
-            if (voltageDropPercent <= inverter.max_voltage_drop) return possibleGauges[i];
+            if (voltageDropPercent <= inverter.max_voltage_drop) {
+                pair = { gauge: possibleGauges[i], vDrop: voltageDropPercent };
+                break;
+            }
         }
+        const oOcpd = ocpdTable.find(function (e) {
+            return e.pvBackfeed === `${pvBackfeed}`;
+        });
+        console.log("Calculated: ", pair);
+        console.log("From Table: ", oOcpd.wireSize, oOcpd.tapWireSize);
+        let calcRating = 0;
+        let tableRating = 0;
+        for (let i = 0; i < possibleGauges.length; ++i) {
+            if (pair.gauge === possibleGauges[i]) calcRating = i;
+            if (tapBool) {
+                if (oOcpd.tapWireSize === possibleGauges[i]) tableRating = i;
+            } else {
+                if (oOcpd.wireSize === possibleGauges[i]) tableRating = i;
+            }
+        }
+        if (tableRating > calcRating) {
+            if (tapBool) return { gauge: oOcpd.tapWireSize, vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.tapWireSize, copperBool, dcBool) };
+            else return { gauge: oOcpd.wireSize, vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.wireSize, copperBool, dcBool) };
+        }
+        else return pair;
     },
-
-    GetSegmentGroundSize() {
-
+    // for MVP this is just a table lookup 
+    GetSegmentGroundSize(ocpd) {
+        const oOcpd = ocpdTable.find(function (e) {
+            return e.pvBackfeed === `${ocpd}`;
+        });
+        return oOcpd.groundWireSize;
     },
 
     GetACDiscoSize: function (numInverters, invCurrentOutput, tapBool) {
-        const ocpd = DetermineOcpd(numInverters, invCurrentOutput);
+        const ocpd = DetermineBackfeed(numInverters, invCurrentOutput);
         // console.log(ocpd);
         const oOcpd = ocpdTable.find(function (e) {
             return e.pvBackfeed === `${ocpd}`;
@@ -155,7 +225,7 @@ module.exports = {
      * @param {Boolean} commonBreakerBool if company doesn't want to use breakers that are multiples of 5, this value is true
      */
     CalculateSolarOcpd: function (numInverters, invCurrentOutput, fusedBool, commonBreakerBool) {
-        const ocpd = DetermineOcpd(numInverters, invCurrentOutput);
+        const ocpd = DetermineBackfeed(numInverters, invCurrentOutput);
         // console.log(ocpd);
         const oOcpd = ocpdTable.find(function (e) {
             return e.pvBackfeed === `${ocpd}`;
@@ -170,8 +240,8 @@ module.exports = {
     },
 }
 
-// solarOCPDCalc calls this
-function DetermineOcpd(numInverters, invCurrentOutput) {
+
+function DetermineBackfeed(numInverters, invCurrentOutput) {
     return Math.ceil(((numInverters * invCurrentOutput) * 1.25) / 5) * 5;
 }
 
@@ -212,7 +282,7 @@ function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWire, dcB
     return (vDrop / segVolt) * 100;
 }
 /**
- * 
+ * return least number of modules found of all the strings
  * @param {Array of Integers} strings 
  */
 function getLowest(strings) {
@@ -222,8 +292,21 @@ function getLowest(strings) {
         if (strings[i] < lowest) lowest = strings[i];
     }
     if (lowest == undefined) throw `${strings} output undefined`;
-    
+
     return lowest;
+}
+
+/**
+ * outputs in this form: #3 AWG, 300 ft, 45.6A, 240V, 2.85 VD%
+ * @param {String} gauge 
+ * @param {String} type 
+ * @param {Integer} dist 
+ * @param {Float} maxOutputVolt 
+ * @param {Float} maxOutputCurrent 
+ * @param {Float} voltDrop 
+ */
+function voltageDropToString(gauge, type, dist, maxOutputVolt, maxOutputCurrent, voltDrop) {
+    return `${gauge} ${type}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
 }
 
 class WireScheduleItem {
@@ -271,7 +354,7 @@ class Wire {
         this.material = fixNull(material);
         this.label = fixNull(label);
     }
-    
+
     getNumWires() {
         return this.number;
     }

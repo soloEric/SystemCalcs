@@ -1,90 +1,90 @@
 [
   {
-    "wireGauge": "#14",
+    "wireGauge": "14 AWG",
     "CopperDcResist": "3.14",
     "CopperAcResist": "3.1",
     "AluminumDcResist": "5.17",
     "AluminumAcResist": "NULL"
   },
   {
-    "wireGauge": "#12",
+    "wireGauge": "12 AWG",
     "CopperDcResist": "1.98",
     "CopperAcResist": "2",
     "AluminumDcResist": "3.25",
     "AluminumAcResist": "2.8"
   },
   {
-    "wireGauge": "#10",
+    "wireGauge": "10 AWG",
     "CopperDcResist": "1.24",
     "CopperAcResist": "1.2",
     "AluminumDcResist": "2.04",
     "AluminumAcResist": "1.8"
   },
   {
-    "wireGauge": "#8",
+    "wireGauge": "8 AWG",
     "CopperDcResist": "0.778",
     "CopperAcResist": "0.78",
     "AluminumDcResist": "1.28",
     "AluminumAcResist": "1.1"
   },
   {
-    "wireGauge": "#6",
+    "wireGauge": "6 AWG",
     "CopperDcResist": "0.491",
     "CopperAcResist": "0.49",
     "AluminumDcResist": "0.808",
     "AluminumAcResist": "0.72"
   },
   {
-    "wireGauge": "#4",
+    "wireGauge": "4 AWG",
     "CopperDcResist": "0.308",
     "CopperAcResist": "0.31",
     "AluminumDcResist": "0.508",
     "AluminumAcResist": "0.4"
   },
   {
-    "wireGauge": "#3",
+    "wireGauge": "3 AWG",
     "CopperDcResist": "0.245",
     "CopperAcResist": "0.25",
     "AluminumDcResist": "0.403",
     "AluminumAcResist": "0.37"
   },
   {
-    "wireGauge": "#2",
+    "wireGauge": "2 AWG",
     "CopperDcResist": "0.194",
     "CopperAcResist": "0.2",
     "AluminumDcResist": "0.319",
     "AluminumAcResist": "0.3"
   },
   {
-    "wireGauge": "#1",
+    "wireGauge": "1 AWG",
     "CopperDcResist": "0.154",
     "CopperAcResist": "0.16",
     "AluminumDcResist": "0.253",
     "AluminumAcResist": "0.25"
   },
   {
-    "wireGauge": "1/0",
+    "wireGauge": "1/0 AWG",
     "CopperDcResist": "0.122",
     "CopperAcResist": "0.12",
     "AluminumDcResist": "0.201",
     "AluminumAcResist": "0.2"
   },
   {
-    "wireGauge": "2/0",
+    "wireGauge": "2/0 AWG",
     "CopperDcResist": "0.0967",
     "CopperAcResist": "0.1",
     "AluminumDcResist": "0.159",
     "AluminumAcResist": "0.16"
   },
   {
-    "wireGauge": "3/0",
+    "wireGauge": "3/0 AWG",
     "CopperDcResist": "0.0766",
     "CopperAcResist": "0.079",
     "AluminumDcResist": "0.126",
     "AluminumAcResist": "0.14"
   },
   {
-    "wireGauge": "4/0",
+    "wireGauge": "4/0 AWG",
     "CopperDcResist": "0.0608",
     "CopperAcResist": "0.063",
     "AluminumDcResist": "0.1",
