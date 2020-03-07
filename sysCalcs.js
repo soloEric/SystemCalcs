@@ -23,8 +23,8 @@ module.exports = {
      * 
      * @param {*} numSegments 
      * @param {*} numStrings 
-     * @param {*} trenchSegments 
-     * @param {*} distPerSegment 
+     * @param {Array} trenchSegments 
+     * @param {Array} distPerSegment 
      * @param {*} numInverters 
      * @param {*} inverter 
      * @param {Array} modulesPerString integers
@@ -45,7 +45,7 @@ module.exports = {
         // if numStrings = 1, then there will be one lest segment and dc will go from 1,2 after 3 will be ac
         let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
         const wireSchedule = [];
-        const vDropPrintouts = [];
+        const vDropPrintOuts = [];
         let material;
         if (copperBool) material = "Copper";
         else material = "Aluminum";
@@ -55,24 +55,40 @@ module.exports = {
 
             // if enphase
             // else do normal
-
+            let gauge;
             numWiresInSegment = this.CalculateNumWires(i, modulesPerString);
             // FIXME: figure out number of wires in scheduleItem
             for (let j = 0; j < numWiresInSegment; ++j) {
 
                 //wire type comes from either company best practice or lookup table
-                let numWires, gauge, wireType, wireTypeAlt, label;
+                let numWires, wireType, wireTypeAlt, label;
                 gauge = this.GetSegmentWireSize();
                 wires.push(new Wire(numWires, gauge, wireType, wireTypeAlt, material, label));
-                
+
             }
             let groundGauge, groundWireType, groundWireTypeAlt;
-            groundGauge = this.GetSegmentWireSize()
+            groundGauge = this.GetSegmentGroundSize();
             wires.push(new Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
             altInputString = this.CalculateConduitSize(wires);
             scheduleItem = new WireScheduleItem(i, wires, altInputString);
             wireSchedule.push(scheduleItem);
+
+            // FIXME test search
+            let dist;
+            const matchIndex = trenchSegments.indexOf(i);
+            if (matchIndex >= 0) {
+                dist = distPerSegment[i];
+            } else {
+                dist = defaultWireDist;
+            }
+            vDropPrintOuts.push(voltageDropToString(gauge.gauge, type, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
+
+
+        }
+        return {
+            schedule: wireSchedule,
+            voltageDropCalcs: vDropPrintOuts
         }
     },
 
@@ -174,7 +190,10 @@ module.exports = {
             let voltageDropPercent = GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, possibleGauges[i], copperBool, dcBool);
             // console.log(voltageDropPercent);
             if (voltageDropPercent <= inverter.max_voltage_drop) {
-                pair = { gauge: possibleGauges[i], vDrop: voltageDropPercent };
+                pair = {
+                    gauge: possibleGauges[i], vDrop: voltageDropPercent,
+                    maxOutputVolt: maxOutputVolt, maxOutputCurrent: maxOutputCurrent
+                };
                 break;
             }
         }
@@ -194,8 +213,16 @@ module.exports = {
             }
         }
         if (tableRating > calcRating) {
-            if (tapBool) return { gauge: oOcpd.tapWireSize, vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.tapWireSize, copperBool, dcBool) };
-            else return { gauge: oOcpd.wireSize, vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.wireSize, copperBool, dcBool) };
+            if (tapBool) return {
+                gauge: oOcpd.tapWireSize,
+                vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.tapWireSize, copperBool, dcBool),
+                maxOutputVolt: maxOutputVolt, maxOutputCurrent: maxOutputCurrent
+            };
+            else return {
+                gauge: oOcpd.wireSize,
+                vDrop: GetPercentVoltageDrop(dist, maxOutputCurrent, maxOutputVolt, oOcpd.wireSize, copperBool, dcBool),
+                maxOutputVolt: maxOutputVolt, maxOutputCurrent: maxOutputCurrent
+            };
         }
         else return pair;
     },
@@ -305,8 +332,8 @@ function getLowest(strings) {
  * @param {Float} maxOutputCurrent 
  * @param {Float} voltDrop 
  */
-function voltageDropToString(gauge, type, dist, maxOutputVolt, maxOutputCurrent, voltDrop) {
-    return `${gauge} ${type}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
+function voltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltDrop) {
+    return `${gauge}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
 }
 
 class WireScheduleItem {
