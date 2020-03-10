@@ -51,7 +51,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 2, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
     });
@@ -71,7 +71,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("8 AWG");
         done();
     });
@@ -92,7 +92,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 3, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("6 AWG");
         done();
     });
@@ -113,7 +113,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 4, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("3 AWG");
         done();
     });
@@ -134,7 +134,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 3, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("3 AWG");
         done();
     });
@@ -155,7 +155,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 2, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
     });
@@ -176,7 +176,7 @@ describe("System Calc Tests:", () => {
             output_current: 15
         };
         let wire = system.GetSegmentWireSize([11, 10], 1, inverter, solarModule, optimizer, 300, 3, true, false);
-        console.log("Returned ", wire);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
     });
@@ -196,9 +196,58 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, null, 3, true, false);
-        console.log("Returned ", wire);
+        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 10, 3, true, false);
+        // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
+        done();
+    });
+
+    it("Get wire gauge test 9: 2 Solaredge 7600s 52 panels trench after inverter", done => {
+        inverter = { // SE 7600
+            max_output_voltage: 240,
+            max_output_current: 32,
+            nominal_dc_input_voltage: 400,
+            max_voltage_drop: 3.0,
+            type: "Optimized"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            open_circuit_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let wire = system.GetSegmentWireSize([13, 13, 13, 13], 2, inverter, solarModule, optimizer, 200, 4, true, false);
+        // console.log("Returned ", wire);
+        expect(wire.gauge).equals("3 AWG");
+        done();
+    });
+
+    it ("Get wire Schedule test 1", done => {
+        inverter = { // SE 7600
+            max_output_voltage: 240,
+            max_output_current: 32,
+            nominal_dc_input_voltage: 400,
+            max_voltage_drop: 3.0,
+            type: "Optimized"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            open_circuit_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = { // p320
+            output_current: 15
+        };
+        let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 2, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
+        for (let i = 0; i < ret.schedule.length; ++i) {
+            console.log(`TAG ${i + 1}`, ret.schedule[i]["wires"]);
+            console.log("Schedule Item:");
+            for (const wire in ret.schedule[i]["wires"]) {
+                console.log(ret.schedule[i]["wires"][wire].toString());
+            }
+            console.log(ret.schedule[i].altInput);
+            console.log(ret.voltageDropCalcs[i], "\n");
+        }
         done();
     });
 });

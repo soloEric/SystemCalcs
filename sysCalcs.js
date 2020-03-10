@@ -10,7 +10,7 @@ const defaultWireDist = 10;
 
 module.exports = {
 
-    CalculateWholeSystem: function () {
+    CalculateWholeSystem: function (interconnection) {
         // get interconnection type
         // get extra equipment if needed
         // ? determine number of segments
@@ -21,19 +21,17 @@ module.exports = {
 
     /**
      * 
-     * @param {*} numSegments 
-     * @param {*} numStrings 
-     * @param {Array} trenchSegments 
-     * @param {Array} distPerSegment 
-     * @param {*} numInverters 
-     * @param {*} inverter 
-     * @param {Array} modulesPerString integers
-     * @param {*} solarModule 
-     * @param {*} optimizer 
+     * @param {Integer} numSegments 
+     * @param {Array} trenchSegments has segment number and distance
+     * @param {Integer} numInverters 
+     * @param {Object} inverter 
+     * @param {Array} modulesPerString 
+     * @param {Object} solarModule 
+     * @param {Object} optimizer 
      * @param {*} copperBool 
      * @param {*} interconnection 
      */
-    GetWireSchedule: function (numSegments, trenchSegments, distPerSegment, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, interconnection) {
+    GetWireSchedule: function (numSegments, trenchSegments, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, tapBool) {
         // numStrings = modulesPerString.length
         // if segment dc, segment will have 3 conductors, pos, neg, ground
         // after seg 1 will need conductor label
@@ -47,44 +45,57 @@ module.exports = {
         const wireSchedule = [];
         const vDropPrintOuts = [];
         let material;
+
+        let firstSegAfterInv;
+        if (modulesPerString.length > 1) firstSegAfterInv = 4;
+        else firstSegAfterInv = 3;
+
         if (copperBool) material = "Copper";
         else material = "Aluminum";
 
-        for (let i = 0; i < numSegments; ++i) {
+        for (let i = 1; i <= numSegments; ++i) {
             let wires = [];
+            let dist = defaultWireDist;
+            for (let j = 0; j < trenchSegments.length; ++j) {
+                if (trenchSegments[j].segment == i) {
+                    // console.log(`Trenching at segment ${i}`);
+                    dist = trenchSegments[j].distance;
+                }
+            }
+            // console.log(`Tag ${i}: distance is ${dist}`);
 
             // if enphase
+
             // else do normal
-            let gauge;
-            numWiresInSegment = this.CalculateNumWires(i, modulesPerString);
-            // FIXME: figure out number of wires in scheduleItem
-            for (let j = 0; j < numWiresInSegment; ++j) {
+            let gauge = this.GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, tapBool);
+            let numPosOrNegWires = this.CalculateNumWires(i, modulesPerString, numInverters, inverter);
+            
+            //wire type comes from either company best practice or lookup table
+            let wireType = "THWN test"
+            let wireTypeAlt = "other type";
 
-                //wire type comes from either company best practice or lookup table
-                let numWires, wireType, wireTypeAlt, label;
-                gauge = this.GetSegmentWireSize();
-                wires.push(new Wire(numWires, gauge, wireType, wireTypeAlt, material, label));
-
+            if (i < firstSegAfterInv) {
+                wires.push(new Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "POSITIVE"));
+                wires.push(new Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "NEGATIVE"));
+            } else {
+                wires.push(new Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "L1"));
+                wires.push(new Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "L2"));
             }
-            let groundGauge, groundWireType, groundWireTypeAlt;
-            groundGauge = this.GetSegmentGroundSize();
+
+            if (i >= firstSegAfterInv) {
+                wires.push(new Wire(1, gauge, wireType, wireTypeAlt, material, "NEUTRAL"));
+            }
+
+            let groundGauge, groundWireType, groundWireTypeAlt = "test ground type";
+            groundGauge = this.GetSegmentGroundSize(pvBackfeed);
             wires.push(new Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
             altInputString = this.CalculateConduitSize(wires);
-            scheduleItem = new WireScheduleItem(i, wires, altInputString);
+            scheduleItem = new WireScheduleItem(i, wires, "Test conduit size");
             wireSchedule.push(scheduleItem);
 
-            // FIXME test search
-            let dist;
-            const matchIndex = trenchSegments.indexOf(i);
-            if (matchIndex >= 0) {
-                dist = distPerSegment[i];
-            } else {
-                dist = defaultWireDist;
-            }
-            vDropPrintOuts.push(voltageDropToString(gauge.gauge, type, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
 
-
+            vDropPrintOuts.push(voltageDropToString(gauge.gauge, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
         }
         return {
             schedule: wireSchedule,
@@ -92,19 +103,22 @@ module.exports = {
         }
     },
 
-    // calculate the number of wires in a segment
-    CalculateNumWires: function (segment, modulesPerString) {
+    // calculate the number of wires in a segment for pos/neg
+    // always 1 ground, if neutral, one neutral
+    CalculateNumWires: function (segment, modulesPerString, numInverters, inverter) {
         let firstSegAfterInv;
         if (modulesPerString.length > 1) firstSegAfterInv = 4;
         else firstSegAfterInv = 3;
 
         if (segment == 1) {
-
+            return 2
         }
         else if (segment > 1 && segment < firstSegAfterInv) { // segment 2 or 3
-
+            if (inverter.type == "Micro" && segment == 3) return modulesPerString.length;
+            else if (segment == 3) return (modulesPerString.length / numInverters) * 2;
+            else return 2;
         } else {
-
+            return 2;
         }
 
     },
@@ -142,16 +156,15 @@ module.exports = {
      * @param {Boolean} tapBool
      */
     GetSegmentWireSize: function (modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, tapBool) {
-        if (segment < 1) throw "Invalid segment number: must be 1 or greater";
+        if (segment < 1) throw `Invalid segment number: must be 1 or greater. Segment number was ${segment}`;
         if (!segment || !copperBool) throw "missing vital field: segment number or copperBool";
-        if (segment < 1) throw "Segment must be 1 or greater";
         if (inverter == null || inverter == undefined) throw "Missing inverter object";
+        if (dist == null || dist == undefined) throw "Distance field cannot be null";
 
         let firstSegAfterInv;
         if (modulesPerString.length > 1) firstSegAfterInv = 4;
         else firstSegAfterInv = 3;
 
-        if (dist == null || dist == undefined) dist = defaultWireDist;
 
         let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
         let maxOutputVolt;
@@ -173,7 +186,7 @@ module.exports = {
             maxOutputCurrent = solarModule.short_circuit_current;
         } else if (inverter.type === "Optimized" && segment < firstSegAfterInv) {
             // optimized
-            if (optimizer == null || optimizer == undefined) throw "Optimizer is required"
+            if (optimizer == null || optimizer == undefined) throw "Optimizer is required";
             dcBool = true;
             maxOutputVolt = inverter.nominal_dc_input_voltage;
             maxOutputCurrent = optimizer.output_current;
@@ -200,8 +213,8 @@ module.exports = {
         const oOcpd = ocpdTable.find(function (e) {
             return e.pvBackfeed === `${pvBackfeed}`;
         });
-        console.log("Calculated: ", pair);
-        console.log("From Table: ", oOcpd.wireSize, oOcpd.tapWireSize);
+        // console.log("Calculated: ", pair);
+        // console.log("From Table: ", oOcpd.wireSize, oOcpd.tapWireSize);
         let calcRating = 0;
         let tableRating = 0;
         for (let i = 0; i < possibleGauges.length; ++i) {
@@ -212,6 +225,7 @@ module.exports = {
                 if (oOcpd.wireSize === possibleGauges[i]) tableRating = i;
             }
         }
+        // if (segment < firstSegAfterInv) tableRating = 0;
         if (tableRating > calcRating) {
             if (tapBool) return {
                 gauge: oOcpd.tapWireSize,
@@ -346,7 +360,7 @@ class WireScheduleItem {
     constructor(tagNum, wires, altInput) {
         this.tagNum = tagNum;
         this.wires = wires;
-        this.altInput = fixNull(altInput);
+        this.altInput = this._fixNull(altInput);
     }
 
     getTotalNumWires() {
@@ -374,12 +388,12 @@ class Wire {
      * @param {String} label POSITIVE, NEGATIVE, GROUND
      */
     constructor(number, gauge, wireType, wireTypeAlt, material, label) {
-        this.number = fixNull(number);
-        this.gauge = fixNull(gauge);
-        this.wireType = fixNull(wireType);
-        this.wireTypeAlt = fixNull(wireTypeAlt);
-        this.material = fixNull(material);
-        this.label = fixNull(label);
+        this.number = this._fixNull(number);
+        this.gauge = this._fixNull(gauge);
+        this.wireType = this._fixNull(wireType);
+        this.wireTypeAlt = this._fixNull(wireTypeAlt);
+        this.material = this._fixNull(material);
+        this.label = this._fixNull(label);
     }
 
     getNumWires() {
@@ -397,7 +411,7 @@ class Wire {
         } else {
             this.wireTypeAlt = "";
         }
-        return `(${this.number})\t${this.gauge} ${this.wireType}, ${this.wireTypeAlt}, ${this.material}, - (${this.label})`;
+        return `(${this.number})\t${this.gauge.gauge} ${this.wireType}, ${this.wireTypeAlt}, ${this.material} - (${this.label})`;
     }
 }
 
