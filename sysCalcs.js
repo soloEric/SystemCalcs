@@ -3,9 +3,12 @@
 
 const ocpdTable = require('./ocpdTable.json');
 const gaugeTable = require('./gaugeTable.json');
+const gaugeAreaTable = require('./gaugeToAreaTable.json'); // All sizes are for Conductor types: THHN, THWN, THWN-2 from chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://shop.iccsafe.org/media/wysiwyg/material/8950P229-sample.pdf
+const conduitSizeTable = require('./conduitSizeTable.json');
 // possibleGauges only reflects what is usual for a residential solar system
 const possibleGauges = ["14 AWG", "12 AWG", "10 AWG", "8 AWG", "6 AWG", "4 AWG", "3 AWG", "2 AWG", "1 AWG", "1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG"];
 const defaultWireDist = 10;
+const maxConduitFillPercent = 0.4;
 // FIXME: add wire descriptor table, 
 
 module.exports = {
@@ -13,6 +16,7 @@ module.exports = {
     CalculateWholeSystem: function (interconnection) {
         // get interconnection type
         // get extra equipment if needed
+        // get best practices items
         // ? determine number of segments
         // Get Wire Schedule
         // Get fused/solar breaker size
@@ -31,24 +35,14 @@ module.exports = {
      * @param {*} copperBool 
      * @param {*} interconnection 
      */
-    GetWireSchedule: function (numSegments, trenchSegments, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, tapBool) {
+    GetWireSchedule: function (numSegments, trenchSegments, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, tapBool, wireType, wireTypeAlt) {
         // numStrings = modulesPerString.length
-        // if segment dc, segment will have 3 conductors, pos, neg, ground
-        // after seg 1 will need conductor label
-        // numDCconductors = numStrings * 2 + ground
-        // (microInverter) numAcConductors = numStrings * (l1, l3, n, g)
-        // segment 1 has pos, neg, ground, no conduit
-        // segment 2-3 has pos, neg, ground, conduit
-        // after inverter has l1(pos) l2(neg), neutral, ground, conduit
-        // if numStrings = 1, then there will be one lest segment and dc will go from 1,2 after 3 will be ac
         let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
         const wireSchedule = [];
         const vDropPrintOuts = [];
         let material;
 
-        let firstSegAfterInv;
-        if (modulesPerString.length > 1) firstSegAfterInv = 4;
-        else firstSegAfterInv = 3;
+        let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
 
         if (copperBool) material = "Copper";
         else material = "Aluminum";
@@ -56,10 +50,12 @@ module.exports = {
         for (let i = 1; i <= numSegments; ++i) {
             let wires = [];
             let dist = defaultWireDist;
+            let isTrenched = false;
             for (let j = 0; j < trenchSegments.length; ++j) {
                 if (trenchSegments[j].segment == i) {
                     // console.log(`Trenching at segment ${i}`);
                     dist = trenchSegments[j].distance;
+                    isTrenched = true;
                 }
             }
             // console.log(`Tag ${i}: distance is ${dist}`);
@@ -68,11 +64,11 @@ module.exports = {
 
             // else do normal
             let gauge = this.GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, tapBool);
-            let numPosOrNegWires = this.CalculateNumWires(i, modulesPerString, numInverters, inverter);
-            
-            //wire type comes from either company best practice or lookup table
-            let wireType = "THWN test"
-            let wireTypeAlt = "other type";
+            let numPosOrNegWires = this.CalculateNumCurrentCarryingConductors(i, modulesPerString, numInverters, inverter);
+
+            //wire type comes from either company best practice or lookup table, these values are for testing
+            wireType = "THWN test"
+            wireTypeAlt = "other type";
 
             if (i < firstSegAfterInv) {
                 wires.push(new Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "POSITIVE"));
@@ -90,11 +86,22 @@ module.exports = {
             groundGauge = this.GetSegmentGroundSize(pvBackfeed);
             wires.push(new Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
-            altInputString = this.CalculateConduitSize(wires);
-            scheduleItem = new WireScheduleItem(i, wires, "Test conduit size");
+            let conduitCallout = this.CalculateConduitSize(wires);
+            let scheduleItem;
+            if (i == 1) {
+                scheduleItem = new WireScheduleItem(i, wires, "");  
+            }
+            else if (isTrenched) {
+                scheduleItem = new WireScheduleItem(i, wires, "CONDUIT: " + conduitCallout + " 18\" MIN. BURIAL IN DIRT");
+            }
+            else if (i >= firstSegAfterInv - 1) {
+                scheduleItem = new WireScheduleItem(i, wires, "CONDUIT: " + conduitCallout);
+            } 
+            else {
+                scheduleItem = new WireScheduleItem(i, wires, "(1)\t" + conduitCallout + " OR FMC");
+            }
+            
             wireSchedule.push(scheduleItem);
-
-
             vDropPrintOuts.push(voltageDropToString(gauge.gauge, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
         }
         return {
@@ -105,10 +112,9 @@ module.exports = {
 
     // calculate the number of wires in a segment for pos/neg
     // always 1 ground, if neutral, one neutral
-    CalculateNumWires: function (segment, modulesPerString, numInverters, inverter) {
-        let firstSegAfterInv;
-        if (modulesPerString.length > 1) firstSegAfterInv = 4;
-        else firstSegAfterInv = 3;
+    // refer to table on derate factor per number of current carrying conductors
+    CalculateNumCurrentCarryingConductors: function (segment, modulesPerString, numInverters, inverter) {
+        let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
 
         if (segment == 1) {
             return 2
@@ -128,20 +134,38 @@ module.exports = {
     // needs gauge size table
     CalculateConduitSize: function (wires) {
         // for each wire
-        // get number of wires per type multiplyed by the gauge area to get area per wiretype
-        // total all areas per wire type
+        let totalArea = 0;
+        for (let i = 0; i < wires.length; ++i) {
+            // get number of wires per type multiplyed by the gauge area to get area per wiretype
+            let numWires = wires[i].number;
+            let gauge = wires[i].gauge.gauge;
+            let obGaugeArea = gaugeAreaTable.find(function (e) {
+                return e.conductorSize === `${gauge}`;
+            });
+            let area = obGaugeArea.inchArea;
+            totalArea += (area * numWires);
+        }
+        let minimumConduitSize = totalArea / maxConduitFillPercent;
         // lookup table to find conduit size based on total area
         // return conduit size
+        let conduitSize = ToNearestFourth(minimumConduitSize);
+        if (conduitSize < 0.75) {
+            conduitSize = 0.75;
+        }
+        if (conduitSize > 3) throw "Conduit size returned abnormally large";
 
+        const oConduit = conduitSizeTable.find(function (e) {
+            return e.floatSize = `${conduitSize}`;
+        })
+        return oConduit.conduitCallout;
     },
 
-    /**
-     * FIXME: may need to return from final GetPercentVoltageDrop with formatted callout:
-     * Trenched Conductor Voltage Drop: #3 AWG, 300 ft, 45.6A, 240V, 2.85 VD%		
+    /**	
      * 
      * Makes a decision on wire gauge for current segment
      * returns the first wire gauge that falls under the accepted voltage drop percentage
-     * based on the inverter/module object
+     * based on the inverter/module object, or if bigger, the size from the ocpdTable. 
+     * Also returns a voltage drop printout per section
      * Note that a different voltage drop calc is done for Enphase systems
      * 
      * @param {Array of Integer} modulesPerString
@@ -161,9 +185,7 @@ module.exports = {
         if (inverter == null || inverter == undefined) throw "Missing inverter object";
         if (dist == null || dist == undefined) throw "Distance field cannot be null";
 
-        let firstSegAfterInv;
-        if (modulesPerString.length > 1) firstSegAfterInv = 4;
-        else firstSegAfterInv = 3;
+        let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
 
 
         let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
@@ -210,6 +232,7 @@ module.exports = {
                 break;
             }
         }
+        // FIXME: Create option for if the segment is before the inverter which doesn't calculate based on pvBackfeed
         const oOcpd = ocpdTable.find(function (e) {
             return e.pvBackfeed === `${pvBackfeed}`;
         });
@@ -245,7 +268,7 @@ module.exports = {
         const oOcpd = ocpdTable.find(function (e) {
             return e.pvBackfeed === `${ocpd}`;
         });
-        return oOcpd.groundWireSize;
+        return { gauge: oOcpd.groundWireSize, vDrop: "NA"};
     },
 
     GetACDiscoSize: function (numInverters, invCurrentOutput, tapBool) {
@@ -281,9 +304,19 @@ module.exports = {
     },
 }
 
+function getFirstSegAfterInv(modulesPerString) {
+    let firstSegAfterInv;
+    if (modulesPerString.length > 1) firstSegAfterInv = 4;
+    else firstSegAfterInv = 3;
+    return firstSegAfterInv;
+}
 
 function DetermineBackfeed(numInverters, invCurrentOutput) {
     return Math.ceil(((numInverters * invCurrentOutput) * 1.25) / 5) * 5;
+}
+
+function ToNearestFourth(num) {
+    return Math.round(num *4) / 4;
 }
 
 /**
@@ -355,12 +388,15 @@ class WireScheduleItem {
      * 
      * @param {Integer} tagNum tag label
      * @param {Array} wires array of wire objects
-     * @param {String} altInput string to hold additional information for the over all tag 
+     * @param {String} conduitCallout string to hold additional information for the over all tag 
      */
-    constructor(tagNum, wires, altInput) {
+    constructor(tagNum, wires, conduitCallout) {
         this.tagNum = tagNum;
         this.wires = wires;
-        this.altInput = this._fixNull(altInput);
+        this.conduitCallout = this._fixNull(conduitCallout);
+        if (this.conduitCallout != "") {
+            this.conduitCallout += " (OR CODE APPROVED EQUIVALENT)";
+        }
     }
 
     getTotalNumWires() {
@@ -394,10 +430,6 @@ class Wire {
         this.wireTypeAlt = this._fixNull(wireTypeAlt);
         this.material = this._fixNull(material);
         this.label = this._fixNull(label);
-    }
-
-    getNumWires() {
-        return this.number;
     }
 
     _fixNull(item) {

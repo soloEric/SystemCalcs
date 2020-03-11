@@ -240,14 +240,15 @@ describe("System Calc Tests:", () => {
         };
         let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 2, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
         for (let i = 0; i < ret.schedule.length; ++i) {
-            console.log(`TAG ${i + 1}`, ret.schedule[i]["wires"]);
+            console.log(`TAG ${ret.schedule[i].tagNum}`, ret.schedule[i]["wires"]);
             console.log("Schedule Item:");
             for (const wire in ret.schedule[i]["wires"]) {
                 console.log(ret.schedule[i]["wires"][wire].toString());
             }
-            console.log(ret.schedule[i].altInput);
+            console.log(ret.schedule[i].conduitCallout);
             console.log(ret.voltageDropCalcs[i], "\n");
         }
         done();
     });
+
 });

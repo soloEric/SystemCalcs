@@ -1,0 +1,67 @@
+[
+  {
+    "conductorSize": "14 AWG",
+    "inchDiameter": "0.111",
+    "inchArea": "0.0097"
+  },
+  {
+    "conductorSize": "12 AWG",
+    "inchDiameter": "0.13",
+    "inchArea": "0.0133"
+  },
+  {
+    "conductorSize": "10 AWG",
+    "inchDiameter": "0.164",
+    "inchArea": "0.0211"
+  },
+  {
+    "conductorSize": "8 AWG",
+    "inchDiameter": "0.236",
+    "inchArea": "0.0366"
+  },
+  {
+    "conductorSize": "6 AWG",
+    "inchDiameter": "0.254",
+    "inchArea": "0.0507"
+  },
+  {
+    "conductorSize": "4 AWG",
+    "inchDiameter": "0.324",
+    "inchArea": "0.0824"
+  },
+  {
+    "conductorSize": "3 AWG",
+    "inchDiameter": "0.352",
+    "inchArea": "0.0973"
+  },
+  {
+    "conductorSize": "2 AWG",
+    "inchDiameter": "0.384",
+    "inchArea": "0.1158"
+  },
+  {
+    "conductorSize": "1 AWG",
+    "inchDiameter": "0.446",
+    "inchArea": "0.1562"
+  },
+  {
+    "conductorSize": "1/0 AWG",
+    "inchDiameter": "0.486",
+    "inchArea": "0.1855"
+  },
+  {
+    "conductorSize": "2/0 AWG",
+    "inchDiameter": "0.532",
+    "inchArea": "0.2223"
+  },
+  {
+    "conductorSize": "3/0 AWG",
+    "inchDiameter": "0.584",
+    "inchArea": "0.2679"
+  },
+  {
+    "conductorSize": "4/0 AWG",
+    "inchDiameter": "0.642",
+    "inchArea": "0.3237"
+  }
+]

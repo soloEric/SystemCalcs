@@ -1,0 +1,42 @@
+[
+  {
+    "conduitCallout": "3/4\" Liquid Tight or EMT",
+    "floatSize": "0.75"
+  },
+  {
+    "conduitCallout": "1\" Liquid Tight or EMT",
+    "floatSize": "1"
+  },
+  {
+    "conduitCallout": "1 1/4\" Liquid Tight or EMT",
+    "floatSize": "1.25"
+  },
+  {
+    "conduitCallout": "1 1/2\" Liquid Tight or EMT",
+    "floatSize": "1.5"
+  },
+  {
+    "conduitCallout": "1 3/4\" Liquid Tight or EMT",
+    "floatSize": "1.75"
+  },
+  {
+    "conduitCallout": "2\" Liquid Tight or EMT",
+    "floatSize": "2"
+  },
+  {
+    "conduitCallout": "2 1/4\" Liquid Tight or EMT",
+    "floatSize": "2.25"
+  },
+  {
+    "conduitCallout": "2 1/2\" Liquid Tight or EMT",
+    "floatSize": "2.5"
+  },
+  {
+    "conduitCallout": "2 3/4\" Liquid Tight or EMT",
+    "floatSize": "2.75"
+  },
+  {
+    "conduitCallout": "3\" Liquid Tight or EMT",
+    "floatSize": "3"
+  }
+]
