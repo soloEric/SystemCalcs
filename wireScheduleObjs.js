@@ -1,17 +1,29 @@
-export {Wire, WireScheduleItem};
+
 
 class WireScheduleItem {
     /**
      * 
      * @param {Integer} tagNum tag label
      * @param {Array} wires array of wire objects
-     * @param {String} altInput string to hold additional information for the over all tag 
+     * @param {String} conduitCallout string to hold additional information for the over all tag 
      */
-    constructor(tagNum, wires, altInput) {
+    constructor(tagNum, wires, conduitCallout) {
         this.tagNum = tagNum;
         this.wires = wires;
-        this.altInput = fixNull(altInput);
+        this.conduitCallout = this._fixNull(conduitCallout);
+        if (this.conduitCallout != "") {
+            this.conduitCallout += " (OR CODE APPROVED EQUIVALENT)";
+        }
     }
+
+    getTotalNumWires() {
+        let total = 0;
+        for (let i = 0; i < this.wires.length; ++i) {
+            total += wires[i].getNumWires();
+        }
+        return total;
+    }
+
     _fixNull(item) {
         if (item == null || item == undefined) return "";
         else return item;
@@ -29,14 +41,14 @@ class Wire {
      * @param {String} label POSITIVE, NEGATIVE, GROUND
      */
     constructor(number, gauge, wireType, wireTypeAlt, material, label) {
-        this.number = fixNull(number);
-        this.gauge = fixNull(gauge);
-        this.wireType = fixNull(wireType);
-        this.wireTypeAlt = fixNull(wireTypeAlt);
-        this.material = fixNull(material);
-        this.label = fixNull(label);
+        this.number = this._fixNull(number);
+        this.gauge = this._fixNull(gauge);
+        this.wireType = this._fixNull(wireType);
+        this.wireTypeAlt = this._fixNull(wireTypeAlt);
+        this.material = this._fixNull(material);
+        this.label = this._fixNull(label);
     }
-    
+
     _fixNull(item) {
         if (item == null || item == undefined) return "";
         else return item;
@@ -48,7 +60,8 @@ class Wire {
         } else {
             this.wireTypeAlt = "";
         }
-        return `(${this.number})\t${this.gauge} ${this.wireType}, ${this.wireTypeAlt}, ${this.material}, - (${this.label})`;
+        return `(${this.number})\t${this.gauge.gauge} ${this.wireType}, ${this.wireTypeAlt}, ${this.material} - (${this.label})`;
     }
 }
 
+module.exports =  {Wire, WireScheduleItem};

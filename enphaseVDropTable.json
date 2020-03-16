@@ -1,0 +1,114 @@
+[
+  {
+    "numInverters": "1",
+    "vDropIQ7": "0.01",
+    "vDropIQ7Plus": "0.01",
+    "currentIQ7": "1",
+    "currentIQ7Plus": "1.2"
+  },
+  {
+    "numInverters": "2",
+    "vDropIQ7": "0.03",
+    "vDropIQ7Plus": "0.04",
+    "currentIQ7": "2",
+    "currentIQ7Plus": "2.4"
+  },
+  {
+    "numInverters": "3",
+    "vDropIQ7": "0.06",
+    "vDropIQ7Plus": "0.08",
+    "currentIQ7": "3",
+    "currentIQ7Plus": "3.6"
+  },
+  {
+    "numInverters": "4",
+    "vDropIQ7": "0.11",
+    "vDropIQ7Plus": "0.13",
+    "currentIQ7": "4",
+    "currentIQ7Plus": "4.8"
+  },
+  {
+    "numInverters": "5",
+    "vDropIQ7": "0.16",
+    "vDropIQ7Plus": "0.2",
+    "currentIQ7": "5",
+    "currentIQ7Plus": "6"
+  },
+  {
+    "numInverters": "6",
+    "vDropIQ7": "0.23",
+    "vDropIQ7Plus": "0.27",
+    "currentIQ7": "6",
+    "currentIQ7Plus": "7.3"
+  },
+  {
+    "numInverters": "7",
+    "vDropIQ7": "0.3",
+    "vDropIQ7Plus": "0.37",
+    "currentIQ7": "7",
+    "currentIQ7Plus": "8.5"
+  },
+  {
+    "numInverters": "8",
+    "vDropIQ7": "0.39",
+    "vDropIQ7Plus": "0.47",
+    "currentIQ7": "8",
+    "currentIQ7Plus": "9.7"
+  },
+  {
+    "numInverters": "9",
+    "vDropIQ7": "0.49",
+    "vDropIQ7Plus": "0.59",
+    "currentIQ7": "9",
+    "currentIQ7Plus": "10.9"
+  },
+  {
+    "numInverters": "10",
+    "vDropIQ7": "0.6",
+    "vDropIQ7Plus": "0.72",
+    "currentIQ7": "10",
+    "currentIQ7Plus": "12.1"
+  },
+  {
+    "numInverters": "11",
+    "vDropIQ7": "0.71",
+    "vDropIQ7Plus": "0.86",
+    "currentIQ7": "11",
+    "currentIQ7Plus": "13.3"
+  },
+  {
+    "numInverters": "12",
+    "vDropIQ7": "0.84",
+    "vDropIQ7Plus": "1.02",
+    "currentIQ7": "12",
+    "currentIQ7Plus": "14.5"
+  },
+  {
+    "numInverters": "13",
+    "vDropIQ7": "0.99",
+    "vDropIQ7Plus": "1.19",
+    "currentIQ7": "13",
+    "currentIQ7Plus": "15.7"
+  },
+  {
+    "numInverters": "14",
+    "vDropIQ7": "1.14",
+    "vDropIQ7Plus": "NA",
+    "currentIQ7": "14",
+    "currentIQ7Plus": "NA"
+  },
+  {
+    "numInverters": "15",
+    "vDropIQ7": "1.3",
+    "vDropIQ7Plus": "NA",
+    "currentIQ7": "15",
+    "currentIQ7Plus": "NA"
+  },
+  {
+    "numInverters": "16",
+    "vDropIQ7": "1.47",
+    "vDropIQ7Plus": "NA",
+    "currentIQ7": "16",
+    "currentIQ7Plus": "NA"
+  }
+]
