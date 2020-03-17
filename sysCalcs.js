@@ -1,11 +1,11 @@
 // common acronyms: 
 // ocpd = overcurrent protection device - refers to the breaker rating
 const WS = require('./wireScheduleObjs');
-const ocpdTable = require('./ocpdTable.json');
-const gaugeTable = require('./gaugeTable.json');
-const gaugeAreaTable = require('./gaugeToAreaTable.json'); // All sizes are for Conductor types: THHN, THWN, THWN-2 from chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://shop.iccsafe.org/media/wysiwyg/material/8950P229-sample.pdf
-const conduitSizeTable = require('./conduitSizeTable.json');
-const enphaseVDropTable = require('./enphaseVDropTable.json');
+const ocpdTable = require('./jsonTables/ocpdTable.json');
+const gaugeTable = require('./jsonTables/gaugeTable.json');
+const gaugeAreaTable = require('./jsonTables/gaugeToAreaTable.json'); // All sizes are for Conductor types: THHN, THWN, THWN-2 from chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://shop.iccsafe.org/media/wysiwyg/material/8950P229-sample.pdf
+const conduitSizeTable = require('./jsonTables/conduitSizeTable.json');
+const enphaseVDropTable = require('./jsonTables/enphaseVDropTable.json');
 // possibleGauges only reflects what is usual for a residential solar system
 const possibleGauges = ["14 AWG", "12 AWG", "10 AWG", "8 AWG", "6 AWG", "4 AWG", "3 AWG", "2 AWG", "1 AWG", "1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG"];
 const defaultWireDist = 10;
