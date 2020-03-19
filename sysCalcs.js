@@ -2,6 +2,7 @@
 Current calcs do not support systems with more than one different type of inverter:
 :it can handle micro inverters, more than one string inverters of the same output/partnumber
 No battery support
+Does not support trenching specific strings and not others
 */
 // common acronyms: 
 // ocpd = overcurrent protection device - refers to the solar breaker rating
