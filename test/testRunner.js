@@ -22,19 +22,6 @@ describe("System Calc Tests:", () => {
         done();
     });
 
-    it("Get AC Disco Size for Tap", done => {
-        expect(system.GetACDiscoSize(8, 1, true)).equals(60); // 8 Enphase IQ7-60-2-US
-        expect(system.GetACDiscoSize(50, 1, true)).equals(100); // 50 Enphase IQ7-60-2-US
-        done();
-    });
-
-    it("Get AC Disco Size non Tap", done => {
-        expect(system.GetACDiscoSize(8, 1, false)).equals(30); // 8 Enphase IQ7-60-2-US
-        expect(system.GetACDiscoSize(24, 1, false)).equals(30); // 24 Enphase IQ7-60-2-US
-        expect(system.GetACDiscoSize(25, 1, false)).equals(60); // 25 Enphase IQ7-60-2-US
-        done();
-    });
-
     it("Get wire gauge test 1: Solaredge trench before inverter", done => {
         inverter = { // SE 3800
             max_output_voltage: 240,
@@ -50,7 +37,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 2, true, false);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 2, true, false, 3);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
@@ -70,7 +57,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true, false);
+        let wire = system.GetSegmentWireSize([15], 1, inverter, solarModule, optimizer, 200, 3, true, false, 3);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("8 AWG");
         done();
@@ -91,7 +78,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 3, true, false);
+        let wire = system.GetSegmentWireSize([15], 8, inverter, solarModule, optimizer, 300, 3, true, false, 3);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("6 AWG");
         done();
@@ -112,7 +99,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 4, true, false);
+        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 4, true, false, 4);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("3 AWG");
         done();
@@ -133,9 +120,9 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 3, true, false);
+        let wire = system.GetSegmentWireSize([14, 13, 13], 20, inverter, solarModule, optimizer, 300, 3, true, false, 4);
         // console.log("Returned ", wire);
-        expect(wire.gauge).equals("3 AWG");
+        expect(wire.gauge).equals("4 AWG");
         done();
     });
 
@@ -154,7 +141,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 2, true, false);
+        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 300, 2, true, false, 3);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
@@ -175,7 +162,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([11, 10], 1, inverter, solarModule, optimizer, 300, 3, true, false);
+        let wire = system.GetSegmentWireSize([11, 10], 1, inverter, solarModule, optimizer, 300, 3, true, false, 4);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
@@ -196,7 +183,7 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 10, 3, true, false);
+        let wire = system.GetSegmentWireSize([10], 1, inverter, solarModule, optimizer, 10, 3, true, false, 3);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("10 AWG");
         done();
@@ -217,13 +204,13 @@ describe("System Calc Tests:", () => {
         optimizer = { // p320
             output_current: 15
         };
-        let wire = system.GetSegmentWireSize([13, 13, 13, 13], 2, inverter, solarModule, optimizer, 200, 4, true, false);
+        let wire = system.GetSegmentWireSize([13, 13, 13, 13], 2, inverter, solarModule, optimizer, 200, 4, true, false, 4);
         // console.log("Returned ", wire);
         expect(wire.gauge).equals("3 AWG");
         done();
     });
 
-    it ("Get wire Schedule test 1", done => {
+    it ("Get wire Schedule test 1: Solaredge Inverter", done => {
         inverter = { // SE 7600
             max_output_voltage: 240,
             max_output_current: 32,
@@ -240,10 +227,38 @@ describe("System Calc Tests:", () => {
         };
         let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 2, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
         for (let i = 0; i < ret.schedule.length; ++i) {
-            console.log(`TAG ${ret.schedule[i].tagNum}`, ret.schedule[i]["wires"]);
+            console.log(`TAG ${ret.schedule[i].tagNum}`);
             console.log("Schedule Item:");
             for (const wire in ret.schedule[i]["wires"]) {
-                console.log(ret.schedule[i]["wires"][wire].toString());
+                console.log(ret.schedule[i]["wires"][wire].getString());
+            }
+            console.log(ret.schedule[i].conduitCallout);
+            console.log(ret.voltageDropCalcs[i], "\n");
+        }
+        done();
+    });
+
+    it ("Get wire Schedule test 2: Enphase Inverter", done => {
+        inverter = { // Enphase IQ7
+            max_output_voltage: 240,
+            max_output_current: 1,
+            nominal_dc_input_voltage: null,
+            max_voltage_drop: 2.0,
+            manufacturer: "Enphase",
+            man_part_num: "IQ7-60-2-US",
+            type: "Micro"
+        };
+        solarModule = { // Axitec AC-280M/156-60S
+            open_circuit_voltage: 31.8,
+            short_circuit_current: 9.75
+        };
+        optimizer = null;
+        let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 52, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
+        for (let i = 0; i < ret.schedule.length; ++i) {
+            console.log(`TAG ${ret.schedule[i].tagNum}`/*, ret.schedule[i]["wires"]*/);
+            console.log("Schedule Item:");
+            for (const wire in ret.schedule[i]["wires"]) {
+                console.log(ret.schedule[i]["wires"][wire].getString());
             }
             console.log(ret.schedule[i].conduitCallout);
             console.log(ret.voltageDropCalcs[i], "\n");

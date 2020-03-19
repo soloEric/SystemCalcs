@@ -16,14 +16,6 @@ class WireScheduleItem {
         }
     }
 
-    getTotalNumWires() {
-        let total = 0;
-        for (let i = 0; i < this.wires.length; ++i) {
-            total += wires[i].getNumWires();
-        }
-        return total;
-    }
-
     _fixNull(item) {
         if (item == null || item == undefined) return "";
         else return item;
@@ -54,13 +46,13 @@ class Wire {
         else return item;
     }
 
-    toString() {
+    getString() {
         if (this.wireTypeAlt) {
-            this.wireTypeAlt = `or ${this.wireTypeAlt}`;
+            this.wireTypeAlt = `or ${this.wireTypeAlt}, `;
         } else {
             this.wireTypeAlt = "";
         }
-        return `(${this.number})\t${this.gauge.gauge} ${this.wireType}, ${this.wireTypeAlt}, ${this.material} - (${this.label})`;
+        return `(${this.number})\t${this.gauge.gauge} ${this.wireType}, ${this.wireTypeAlt}${this.material} - (${this.label})`;
     }
 }
 

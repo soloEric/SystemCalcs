@@ -1,5 +1,10 @@
+/*
+Current calcs do not support systems with more than one different type of inverter:
+:it can handle micro inverters, more than one string inverters of the same output/partnumber
+No battery support
+*/
 // common acronyms: 
-// ocpd = overcurrent protection device - refers to the breaker rating
+// ocpd = overcurrent protection device - refers to the solar breaker rating
 const WS = require('./wireScheduleObjs');
 const ocpdTable = require('./jsonTables/ocpdTable.json');
 const gaugeTable = require('./jsonTables/gaugeTable.json');
@@ -10,10 +15,9 @@ const enphaseVDropTable = require('./jsonTables/enphaseVDropTable.json');
 const possibleGauges = ["14 AWG", "12 AWG", "10 AWG", "8 AWG", "6 AWG", "4 AWG", "3 AWG", "2 AWG", "1 AWG", "1/0 AWG", "2/0 AWG", "3/0 AWG", "4/0 AWG"];
 const defaultWireDist = 10;
 const maxConduitFillPercent = 0.4;
-// FIXME: add wire descriptor table, ask Jake 
-// FIXME: add throws anytime a table lookup returns undefined
+const possibleTrenchConduitSizes = [1.5, 2, 2.5, 3];
 
-
+// Completed by Dev?
 function CalculateWholeSystem(interconnection) {
     // get interconnection type
     // get extra equipment if needed
@@ -25,7 +29,8 @@ function CalculateWholeSystem(interconnection) {
 }
 
 /**
- * 
+ * Fills out a wire schedule object
+ * see test outputs for similar format to CAD
  * @param {Integer} numSegments 
  * @param {Array} trenchSegments has segment number and distance
  * @param {Integer} numInverters 
@@ -33,18 +38,22 @@ function CalculateWholeSystem(interconnection) {
  * @param {Array} modulesPerString 
  * @param {Object} solarModule 
  * @param {Object} optimizer 
- * @param {*} copperBool 
- * @param {*} interconnection 
+ * @param {Boolean} copperBool 
+ * @param {Boolean} tapBool
+ * @param {String} wireType
+ * @param {String} wireTypeAlt
+ * @param {String} groundWireType
+ * @param {String} groundWireTypeAlt
  */
-function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, tapBool, wireType, wireTypeAlt) {
-    // numStrings = modulesPerString.length
+// FIXME: wireType, wireTypeAlt, and groundWireType have been hard coded for testing, these should come from best practice or utility objects
+function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, modulesPerString, solarModule, optimizer, copperBool, tapBool, wireType, wireTypeAlt, groundWireType, groundWireTypeAlt) {
     let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
     const wireSchedule = [];
     const vDropPrintOuts = [];
+    
+    let firstSegAfterInv = GetFirstSegAfterInv(modulesPerString);
+    
     let material;
-
-    let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
-
     if (copperBool) material = "Copper";
     else material = "Aluminum";
 
@@ -52,26 +61,23 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
         let wires = [];
         let dist = defaultWireDist;
         let isTrenched = false;
+        // parse trench distance and set isTrenched bool
         for (let j = 0; j < trenchSegments.length; ++j) {
             if (trenchSegments[j].segment == i) {
-                // console.log(`Trenching at segment ${i}`);
                 dist = trenchSegments[j].distance;
                 isTrenched = true;
             }
         }
-        // console.log(`Tag ${i}: distance is ${dist}`);
+        let gauge = GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, tapBool, firstSegAfterInv);
 
-        // if enphase
-
-        // else do normal
-        let gauge = GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, tapBool);
-        let numPosOrNegWires = CalculateNumCurrentCarryingConductors(i, modulesPerString, numInverters, inverter);
+        // Post MVP: refer to table on derate factor per number of current carrying conductors
+        let numPosOrNegWires = CalculateNumCurrentCarryingConductors(i, modulesPerString, numInverters, inverter, firstSegAfterInv);
 
         //wire type comes from either company best practice or lookup table, these values are for testing
         wireType = "THWN test"
         wireTypeAlt = "other type";
 
-        if (i < firstSegAfterInv) {
+        if (i < firstSegAfterInv && !(inverter.type === "Micro")) {
             wires.push(new WS.Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "POSITIVE"));
             wires.push(new WS.Wire(numPosOrNegWires / 2, gauge, wireType, wireTypeAlt, material, "NEGATIVE"));
         } else {
@@ -83,11 +89,13 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
             wires.push(new WS.Wire(1, gauge, wireType, wireTypeAlt, material, "NEUTRAL"));
         }
 
-        let groundGauge, groundWireType, groundWireTypeAlt = "test ground type";
+        let groundGauge;
+        groundWireTypeAlt = "";
+        groundWireType = "Test Ground type";
         groundGauge = GetSegmentGroundSize(pvBackfeed, modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, firstSegAfterInv);
         wires.push(new WS.Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
-        let conduitCallout = CalculateConduitSize(wires);
+        let conduitCallout = CalculateConduitSize(wires, isTrenched);
         let scheduleItem;
         if (i == 1) {
             scheduleItem = new WS.WireScheduleItem(i, wires, "");
@@ -103,7 +111,7 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
         }
 
         wireSchedule.push(scheduleItem);
-        vDropPrintOuts.push(voltageDropToString(gauge.gauge, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
+        vDropPrintOuts.push(VoltageDropToString(gauge.gauge, dist, gauge.maxOutputVolt, gauge.maxOutputCurrent, gauge.vDrop));
     }
     return {
         schedule: wireSchedule,
@@ -111,53 +119,64 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
     }
 }
 
-// calculate the number of wires in a segment for pos/neg
-// always 1 ground, if neutral, one neutral
-// refer to table on derate factor per number of current carrying conductors
-function CalculateNumCurrentCarryingConductors(segment, modulesPerString, numInverters, inverter) {
-    let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
-
-    if (segment == 1) {
-        return 2
-    }
+/**
+ * Calculate the number of current carrying conductors in a segment
+ * @param {Integer} segment 
+ * @param {Array} modulesPerString 
+ * @param {Integer} numInverters 
+ * @param {Object} inverter 
+ * @param {Integer} firstSegAfterInv 3 or 4
+ */
+function CalculateNumCurrentCarryingConductors(segment, modulesPerString, numInverters, inverter, firstSegAfterInv) {
+    if (segment == 1) return 2;
     else if (segment > 1 && segment < firstSegAfterInv) { // segment 2 or 3
         if (inverter.type == "Micro" && segment == 3) return modulesPerString.length;
         else if (segment == 3) return (modulesPerString.length / numInverters) * 2;
         else return 2;
-    } else {
-        return 2;
-    }
-
+    } else return 2;
 }
 
 // for MVP we are using ocpdTable for generic temperature derate calcs
-// given a list of wires, calculate the conduit fill and determine conduit size
-// needs gauge size table
-function CalculateConduitSize(wires) {
+/**
+ * given a list of wires, calculate the conduit fill and determine conduit size
+ * @param {Object Array} wires 
+ * @param {Boolean} isTrenched 
+ */
+function CalculateConduitSize(wires, isTrenched) {
     // for each wire
     let totalArea = 0;
     for (let i = 0; i < wires.length; ++i) {
-        // get number of wires per type multiplyed by the gauge area to get area per wiretype
+        // number of wires per type multiplyed by the gauge area is area per wiretype
         let numWires = wires[i].number;
         let gauge = wires[i].gauge.gauge;
         let obGaugeArea = gaugeAreaTable.find(function (e) {
             return e.conductorSize === `${gauge}`;
         });
+        if (obGaugeArea == undefined) throw `Error at CalculateConduitSize: gaugeAreaTable.find(${gauge}) returned undefined`;
         let area = obGaugeArea.inchArea;
         totalArea += (area * numWires);
     }
     let minimumConduitSize = totalArea / maxConduitFillPercent;
-    // lookup table to find conduit size based on total area
-    // return conduit size
+
     let conduitSize = ToNearestFourth(minimumConduitSize);
     if (conduitSize < 0.75) {
         conduitSize = 0.75;
     }
-    if (conduitSize > 3) throw "Conduit size returned abnormally large";
+    if (conduitSize > 3) throw "Error at CalculateConduitSize: Conduit size returned larger than max known size";
+
+    if (isTrenched) {
+        for (let i = 0; i < possibleTrenchConduitSizes.length; ++i) {
+            if (minimumConduitSize < possibleTrenchConduitSizes[i]) {
+                conduitSize = possibleTrenchConduitSizes[i];
+                break;
+            }
+        }
+    }
 
     const oConduit = conduitSizeTable.find(function (e) {
-        return e.floatSize = `${conduitSize}`;
-    })
+        return e.floatSize === `${conduitSize}`;
+    });
+    if (oConduit == undefined) throw `Error at CalculateConduitSize: conduitSizeTable.find(${conduitSize}) returned undefined`;
     return oConduit.conduitCallout;
 }
 
@@ -176,24 +195,22 @@ function CalculateConduitSize(wires) {
  * @param {Optimizer Object} optimizer can be null
  * @param {Integer} dist distance rounded to the nearest foot
  * @param {Integer} segment indicates which segment the voltage calcs are for, switch statement anything greater than 4 is always ac
- * all are ac if inverter is micro, must be 1 or greater
  * @param {Boolean} copperBool is the wire copper or not? Comes from best practices
  * @param {Boolean} tapBool
  */
-function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, tapBool) {
-    let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
-
-    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool)
+function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, tapBool, firstSegAfterInv) {
+    let ocpd = DetermineBackfeed(numInverters, inverter.max_output_current);
+    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv)
 
     let pair;
+
     for (let i = 0; i < possibleGauges.length; ++i) {
         let voltageDropPercent;
-        if (inverter.manufacturer === "Enphase") {
+        if (inputs.vDrop) {
             voltageDropPercent = inputs.vDrop;
         } else {
             voltageDropPercent = GetPercentVoltageDrop(dist, inputs.maxOutputCurrent, inputs.maxOutputVolt, possibleGauges[i], copperBool, inputs.dcBool);
         }
-        // console.log(voltageDropPercent);
         if (voltageDropPercent <= inverter.max_voltage_drop) {
             pair = {
                 gauge: possibleGauges[i], vDrop: voltageDropPercent,
@@ -201,18 +218,17 @@ function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModul
             };
             break;
         }
-    } 
+    }
     const oOcpd = ocpdTable.find(function (e) {
-        // FIXME: Check this on Enphase systems
-        if (inputs.dcBool) {
-            // console.log("Rounded value: ", Math.ceil(maxOutputCurrent / 5) * 5);
+        if (inputs.dcBool || (inverter.type === "Micro" && segment < firstSegAfterInv)) {
             return e.pvBackfeed === `${Math.ceil(inputs.maxOutputCurrent / 5) * 5}`;
         } else {
-            return e.pvBackfeed === `${pvBackfeed}`;
+            return e.pvBackfeed === `${ocpd}`;
         }
     });
-    // console.log("Calculated: ", pair);
-    // console.log("From Table: ", oOcpd.wireSize, oOcpd.tapWireSize);
+    if (oOcpd == undefined) throw `Error at GetSegmentWireSize: ocpdTable.find(${ocpd} OR ${Math.ceil(inputs.maxOutputCurrent / 5) * 5}) returned undefined`;
+    
+    // rate sizes and select one with larger gauge
     let calcRating = 0;
     let tableRating = 0;
     for (let i = 0; i < possibleGauges.length; ++i) {
@@ -223,61 +239,75 @@ function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModul
             if (oOcpd.wireSize === possibleGauges[i]) tableRating = i;
         }
     }
-    // if (segment < firstSegAfterInv) tableRating = 0;
+
     if (tableRating > calcRating) {
-        if (tapBool) return {
-            gauge: oOcpd.tapWireSize,
-            vDrop: GetPercentVoltageDrop(dist, inputs.maxOutputCurrent, inputs.maxOutputVolt, oOcpd.tapWireSize, copperBool, inputs.dcBool),
-            maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
-        };
-        else return {
-            gauge: oOcpd.wireSize,
-            vDrop: GetPercentVoltageDrop(dist, inputs.maxOutputCurrent, inputs.maxOutputVolt, oOcpd.wireSize, copperBool, inputs.dcBool),
-            maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
-        };
+        if (inputs.vDrop) {
+            if (tapBool) return {
+                gauge: oOcpd.tapWireSize,
+                vDrop: parseFloat(inputs.vDrop),
+                maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
+            };
+            else return {
+                gauge: oOcpd.wireSize,
+                vDrop: parseFloat(inputs.vDrop),
+                maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
+            };
+        } else {
+            if (tapBool) return {
+                gauge: oOcpd.tapWireSize,
+                vDrop: GetPercentVoltageDrop(dist, inputs.maxOutputCurrent, inputs.maxOutputVolt, oOcpd.tapWireSize, copperBool, inputs.dcBool),
+                maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
+            };
+            else return {
+                gauge: oOcpd.wireSize,
+                vDrop: GetPercentVoltageDrop(dist, inputs.maxOutputCurrent, inputs.maxOutputVolt, oOcpd.wireSize, copperBool, inputs.dcBool),
+                maxOutputVolt: inputs.maxOutputVolt, maxOutputCurrent: inputs.maxOutputCurrent
+            };
+        }
     }
     else return pair;
 }
 
-function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool) {
-    if (segment < 1) throw `Invalid segment number: must be 1 or greater. Segment number was ${segment}`;
-    if (!segment || !copperBool) throw "missing segment number or copperBool";
-    if (inverter == null || inverter == undefined) throw "Missing inverter object";
-    if (dist == null || dist == undefined) throw "Distance field cannot be null";
-
-    let firstSegAfterInv = getFirstSegAfterInv(modulesPerString);
+function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv) {
+    if (segment < 1) throw `Error at GetMaxOutCurrentMaxOutVolt: Invalid segment number: must be 1 or greater. Segment number was ${segment}`;
+    if (!segment || !copperBool) throw "Error at GetMaxOutCurrentMaxOutVolt: missing segment number or copperBool";
+    if (inverter == null || inverter == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Missing inverter object";
+    if (dist == null || dist == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Distance field cannot be null";
 
     let maxOutputVolt;
     let maxOutputCurrent;
     let dcBool;
 
     if (inverter.type === "Micro") {
-        // FIXME: replace throw with call to Enphase calc
         if (segment == 1 && inverter.manufacturer === "Enphase") {
-            // throw "Use Enphase Voltage Drop Values";
-            return GetEnphaseCalc(numInverters, inverter);
+            return GetEnphaseCalc(modulesPerString, inverter);
         }
 
+        if (numInverters == null || numInverters == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Missing numInverters field";
         dcBool = false;
-        if (numInverters == null || numInverters == undefined) throw "Missing numInverters field";
         maxOutputVolt = inverter.max_output_voltage;
-        maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
+        if (segment < firstSegAfterInv) {
+            maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(GetHighest(modulesPerString).toString()).toFixed(2));
+        } else {
+            maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
+        }
+        // console.log(`Segment: ${segment}`, maxOutputCurrent, maxOutputVolt);
     } else if (inverter.type === "String" && segment < firstSegAfterInv) {
+        if (solarModule == null || solarModule == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Module object missing";
+        if (modulesPerString == null || modulesPerString == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Array of string sizes missing";
         dcBool = true;
-        if (solarModule == null || solarModule == undefined) throw "Module object missing";
-        if (modulesPerString == null || modulesPerString == undefined) throw "Array of string sizes missing";
-        maxOutputVolt = solarModule.open_circuit_voltage * getLowest(modulesPerString);
+        maxOutputVolt = solarModule.open_circuit_voltage * GetLowest(modulesPerString);
         maxOutputCurrent = solarModule.short_circuit_current;
     } else if (inverter.type === "Optimized" && segment < firstSegAfterInv) {
         // optimized
-        if (optimizer == null || optimizer == undefined) throw "Optimizer is required";
+        if (optimizer == null || optimizer == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Optimizer object missing";
         dcBool = true;
         maxOutputVolt = inverter.nominal_dc_input_voltage;
         maxOutputCurrent = optimizer.output_current;
     } else {
         // after the inverter and is a String inverter
+        if (numInverters == null || numInverters == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: numInverters field missing";
         dcBool = false;
-        if (numInverters == null || numInverters == undefined) throw "Missing numInverters field";
         maxOutputVolt = inverter.max_output_voltage;
         maxOutputCurrent = inverter.max_output_current * parseFloat(parseFloat(numInverters.toString()).toFixed(2));
     }
@@ -286,62 +316,68 @@ function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, so
 
 // for MVP this is just a table lookup 
 function GetSegmentGroundSize(ocpd, modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv) {
-    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool);
+    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv);
     const oOcpd = ocpdTable.find(function (e) {
         if (segment >= firstSegAfterInv) {
             return e.pvBackfeed === `${ocpd}`;
         } else {
-            return e.pvBackfeed === `${inputs.maxOutputCurrent}`;
+            return e.pvBackfeed === `${ToNearestFive(inputs.maxOutputCurrent)}`;
         }
-
     });
+    if (oOcpd == undefined) throw `Error at GetMaxOutCurrentMaxOutVolt: ocpdTable.find(${ocpd} OR ${ToNearestFive(inputs.maxOutputCurrent)}) returned undefined`;
     return { gauge: oOcpd.groundWireSize, vDrop: "NA" };
 }
-
-function GetEnphaseCalc(numInverters, inverter) {
-// FIXME: Ask JAke if the vDrop is per string, if vDrop is calculated correctly when returned
+/**
+ * Enphase vDrop calc is based off a table provided by the manufacturer
+ * @param {Array} modulesPerString 
+ * @param {Object} inverter 
+ */
+function GetEnphaseCalc(modulesPerString, inverter) {
+    let numInverters = GetHighest(modulesPerString);
     let maxOutputCurrent;
     const oEnphase = enphaseVDropTable.find(function (e) {
         return e.numInverters === `${numInverters}`;
     });
-    if (oEnphase == undefined) throw "Error: find returned undefined";
+    if (oEnphase == undefined) throw `Error at GetEnphaseCalc: enphaseVDropTable.find(${numInverters}) returned undefined`;
+
     switch (inverter.man_part_num) {
         case "IQ7-60-2-US":
-            maxOutputCurrent = oEnphase.currentIQ7;
+            maxOutputCurrent = parseFloat(oEnphase.currentIQ7);
 
-            return { maxOutputVolt: 0, maxOutputCurrent: maxOutputCurrent, dcBool: false, vDrop: oEnphase.vDropIQ7 };
+            return { maxOutputVolt: inverter.max_output_voltage, maxOutputCurrent: maxOutputCurrent, dcBool: false, vDrop: oEnphase.vDropIQ7 };
 
         case "IQ7PLUS-72-2-US":
-            maxOutputCurrent = oEnphase.currentIQ7Plus;
-            if (maxOutputCurrent === "NA") throw "Error: Too many modules in the string";
-            return { maxOutputVolt: 0, maxOutputCurrent: maxOutputCurrent, dcBool: false, vDrop: oEnphase.vDropIQ7Plus };
+            maxOutputCurrent = parseFloat(oEnphase.currentIQ7Plus);
+            if (maxOutputCurrent === "NA") throw "Error at GetEnphaseCalc: Too many modules in the string";
+            return { maxOutputVolt: inverter.max_output_voltage, maxOutputCurrent: maxOutputCurrent, dcBool: false, vDrop: oEnphase.vDropIQ7Plus };
 
         default:
-            throw "Inverter not supported";
-        // add other enphase inverters
+            throw "Error at GetEnphaseCalc: Inverter not supported";
+        // FIXME: ?add other enphase inverters
     }
 }
-
-function GetACDiscoSize(numInverters, invCurrentOutput, tapBool) {
-    const ocpd = DetermineBackfeed(numInverters, invCurrentOutput);
-    // console.log(ocpd);
+/**
+ * returns ACDisco rating 
+ * @param {Integer} ocpd or pvBackfeed, call DetermineBackfeed before calling this
+ */
+function GetACDiscoSize(ocpd) {
     const oOcpd = ocpdTable.find(function (e) {
         return e.pvBackfeed === `${ocpd}`;
     });
+    if (oOcpd == undefined) throw `Error at GetACDiscoSize: ocpdTable.find(${ocpd}) returned undefined`;
     if (tapBool) return parseInt(oOcpd.tapAcDisco);
     return parseInt(oOcpd.acDisco);
 }
 
 /**
  * returns int of solar breaker/fuse size
- * @param {Integer} numInverters number of inverters
- * @param {Float} invCurrentOutput value from inverter object
+ * @param {Integer} numInverters
+ * @param {Float} invCurrentOutput 
  * @param {Boolean} fusedBool is the disconnect fused or no
  * @param {Boolean} commonBreakerBool if company doesn't want to use breakers that are multiples of 5, this value is true
  */
 function CalculateSolarOcpd(numInverters, invCurrentOutput, fusedBool, commonBreakerBool) {
     const ocpd = DetermineBackfeed(numInverters, invCurrentOutput);
-    // console.log(ocpd);
     const oOcpd = ocpdTable.find(function (e) {
         return e.pvBackfeed === `${ocpd}`;
     });
@@ -355,11 +391,9 @@ function CalculateSolarOcpd(numInverters, invCurrentOutput, fusedBool, commonBre
 }
 
 
-function getFirstSegAfterInv(modulesPerString) {
-    let firstSegAfterInv;
-    if (modulesPerString.length > 1) firstSegAfterInv = 4;
-    else firstSegAfterInv = 3;
-    return firstSegAfterInv;
+function GetFirstSegAfterInv(modulesPerString) {
+    if (modulesPerString.length > 1) return 4;
+    else return 3;
 }
 
 function DetermineBackfeed(numInverters, invCurrentOutput) {
@@ -367,7 +401,11 @@ function DetermineBackfeed(numInverters, invCurrentOutput) {
 }
 
 function ToNearestFourth(num) {
-    return Math.round(num * 4) / 4;
+    return Math.ceil(num * 4) / 4;
+}
+
+function ToNearestFive(num) {
+    return Math.ceil(num / 5) * 5;
 }
 
 /**
@@ -375,54 +413,63 @@ function ToNearestFourth(num) {
  * @param {Integer} dist 
  * @param {Integer} segCurrent 
  * @param {Integer} segVolt
- * @param {String} gauge ex: #12, 1/0
- * @param {Boolean} copperWire refers to either "copper" or "aluminum"
+ * @param {String} gauge ex: 12 AWG, 1/0 AWG
+ * @param {Boolean} copperWireBool
  * @param {Boolean} dcBool indicates whether the segment is running dc or ac
  */
-function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWire, dcBool) {
+function GetPercentVoltageDrop(dist, segCurrent, segVolt, gauge, copperWireBool, dcBool) {
     const oGauge = gaugeTable.find(function (e) {
         return e.wireGauge === `${gauge}`;
     });
+    if (oGauge == undefined) throw `Error at GetPercentVoltageDrop: gaugeTable.find(${gauge}) returned undefined`;
     let ohms = 0;
-    // console.log(dcBool);
-    if (copperWire) {
-        // console.log(oGauge['CopperAcResist']);
+    if (copperWireBool) {
         if (dcBool) ohms = parseFloat(oGauge['CopperDcResist']);
         else ohms = parseFloat(oGauge['CopperAcResist']);
     } else {
         if (dcBool) ohms = parseFloat(oGauge['AluminumDcResist']);
         else ohms = parseFloat(oGauge['AluminumAcResist']);
     }
-    // console.log("segCurrent: ", segCurrent);
-    // console.log("SegVolt: ", segVolt)
-    // console.log("Ohms = ", ohms);
-    if (isNaN(ohms)) return 100.0;
+    if (isNaN(ohms)) throw "Error at GetPercentVoltageDrop: ohms is not a number";
 
-    // v = segCurrent * resistance
     const resistance = (ohms / 1000) * dist * 2;
-    // console.log("Resistance: ", resistance);
     const vDrop = segCurrent * resistance;
-    // console.log("Voltage Drop: ", vDrop);
-
     return (vDrop / segVolt) * 100;
 }
+
 /**
  * return least number of modules found of all the strings
  * @param {Array of Integers} strings 
  */
-function getLowest(strings) {
+function GetLowest(strings) {
     let lowest;
     for (let i = 0; i < strings.length; ++i) {
         if (lowest == null || lowest == undefined) lowest = strings[i];
         if (strings[i] < lowest) lowest = strings[i];
     }
-    if (lowest == undefined) throw `${strings} output undefined`;
+    if (lowest == undefined) throw `Error at GetLowest: GetLowest of ${strings} output undefined`;
 
     return lowest;
 }
 
 /**
- * outputs in this form: #3 AWG, 300 ft, 45.6A, 240V, 2.85 VD%
+ * return largest number of modules found of all the strings
+ * @param {Array of Integers} strings 
+ */
+function GetHighest(strings) {
+    let highest;
+    for (let i = 0; i < strings.length; ++i) {
+        if (highest == null || highest == undefined) highest = strings[i];
+        if (strings[i] > highest) highest = strings[i];
+    }
+    if (highest == undefined) throw `Error at GetHighest: GetHighest of ${strings} output undefined`;
+
+    return highest;
+}
+
+/**
+ * outputs example: #3 AWG, 300 ft, 45.6A, 240V, 2.85 VD%
+ * Printout is used when trenching, can also be required for every segment by utility or ahj (Oregon) 
  * @param {String} gauge 
  * @param {String} type 
  * @param {Integer} dist 
@@ -430,7 +477,7 @@ function getLowest(strings) {
  * @param {Float} maxOutputCurrent 
  * @param {Float} voltDrop 
  */
-function voltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltDrop) {
+function VoltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltDrop) {
     return `${gauge}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
 }
 
