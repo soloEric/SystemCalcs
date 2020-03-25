@@ -1,6 +1,7 @@
 // use to debug single tests
 
 const system = require('./sysCalcs');
+const d = require('./dwgSelection');
 function run() {
     inverter = { // Enphase IQ7
         max_output_voltage: 240,
@@ -16,7 +17,7 @@ function run() {
         short_circuit_current: 9.75
     };
     optimizer = null;
-    let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 52, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
+    let ret = system.GetWireSchedule(5, [{ segment: 4, distance: 35 }], 52, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
     for (let i = 0; i < ret.schedule.length; ++i) {
         console.log(`TAG ${ret.schedule[i].tagNum}`/*, ret.schedule[i]["wires"]*/);
         console.log("Schedule Item:");
@@ -26,5 +27,6 @@ function run() {
         console.log(ret.schedule[i].conduitCallout);
         console.log(ret.voltageDropCalcs[i], "\n");
     }
+    console.log(d.SelectStringsDwgName(inverter, 6));
 }
 run();
