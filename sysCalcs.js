@@ -51,9 +51,9 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
     let pvBackfeed = DetermineBackfeed(numInverters, inverter.max_output_current);
     const wireSchedule = [];
     const vDropPrintOuts = [];
-    
+
     let firstSegAfterInv = GetFirstSegAfterInv(modulesPerString);
-    
+
     let material;
     if (copperBool) material = "Copper";
     else material = "Aluminum";
@@ -228,7 +228,7 @@ function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModul
         }
     });
     if (oOcpd == undefined) throw `Error at GetSegmentWireSize: ocpdTable.find(${ocpd} OR ${Math.ceil(inputs.maxOutputCurrent / 5) * 5}) returned undefined`;
-    
+
     // rate sizes and select one with larger gauge
     let calcRating = 0;
     let tableRating = 0;
@@ -482,4 +482,28 @@ function VoltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltD
     return `${gauge}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
 }
 
-module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem };
+function CalculateSystemSize(totalModules, solarModule) {
+    return totalModules * solarModule.max_output_power; // max_output_power is wattage
+}
+
+function GetNumInverters(modulesPerString, inverter) {
+    if (inverter.type != 'Micro') throw "User specifies number of inverters";
+    if (inverter.manufacturer === "Enphase") {
+        let total = 0;
+        for (let i = 0; i < modulesPerString.length; ++i) {
+            total += modulesPerString[i];
+        }
+        return { totalInverters: total, invertersPerString: modulesPerString };
+    };
+    let invertersPerString = [];
+    let totalInv = 0;
+    for (let i = 0; i < modulesPerString.length; ++i) {
+        let numInverters = Math.ceil(modulesPerString[i] / inverter.modules_per_inverter);
+        invertersPerString.push(numInverters);
+        totalInv += numInverters;
+    }
+
+    return { totalInverters: totalInv, invertersPerString: invertersPerString };
+}
+
+module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters };
