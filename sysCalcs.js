@@ -506,7 +506,8 @@ function CalculateCurrentPerString(inverter, invertersPerString) {
 }
 
 /**
- * 
+ * returns the upper bound value of the max panels that can be in any string, used in ValidateStringsSizes
+ * this is meant for when inverter.type != 'Micro'
  * @param {*} inverter 
  * @param {*} solarModule 
  */
