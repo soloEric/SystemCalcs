@@ -482,23 +482,81 @@ function VoltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltD
     return `${gauge}, ${dist} ft, ${maxOutputCurrent.toFixed(1)}A, ${maxOutputVolt}V, ${voltDrop.toFixed(2)} VD%`;
 }
 
+/**
+ * returns the system size, used for cad csv and datalinking to cad
+ * @param {Integer} totalModules total number of modules on the project == sum of modulesPerString 
+ * @param {Object} solarModule the solar module object 
+ */
 function CalculateSystemSize(totalModules, solarModule) {
     return totalModules * solarModule.max_output_power; // max_output_power is wattage
 }
+/**
+ * returns an array of the output current for each string
+ * this is applicable to inverter.type === 'Micro'
+ * these values go into the csv and are datalinked into cad
+ * @param {Object} inverter 
+ * @param {Array} invertersPerString call GetNumInverters for this array 
+ */
+function CalculateCurrentPerString(inverter, invertersPerString) {
+    let currentPerString = [];
+    for (let i = 0; i < invertersPerString.length; ++i) {
+        currentPerString.push(inverter.max_output_power * invertersPerString[i]);
+    }
+    return currentPerString;
+}
 
+/**
+ * 
+ * @param {*} inverter 
+ * @param {*} solarModule 
+ */
+function CalculateMaxPanelsPerString(inverter, solarModule) { // non micro
+    let maxPanelsPerString = Math.floor(inverter.max_power_per_string / (solarModule.max_power));
+    return maxPanelsPerString;
+}
+
+/**
+ * Validate user inputs for panels per string entered
+ * returns an array indicating which strings are valid (true) and which strings are invalid (false)
+ * @param {Array} modulesPerString number of panels in the string being validated
+ * @param {Object} inverter inverter Object
+ * @param {Integer} maxPanelsPerString is the value returned by CalculateMaxPanelsPerString
+ * @param {Array} invertersPerString is the array returned by GetNumInverters
+ */
+function ValidateStringSizes(modulesPerString, inverter, maxPanelsPerString, invertersPerString) {
+    // maxPanelsPerString can be null if
+    let boolArray = [];
+    if (inverter.type === 'Micro') {
+        if (invertersPerString == null || invertersPerString == undefined) throw "Missing invertersPerString: call GetNumInverters";
+        for (let i = 0; i < modulesPerString.length; ++i) {
+            if (invertersPerString[i] <= inverter.max_inverters_per_string && modulesPerString[i] >= inverter.min_num_modules_per_string) boolArray.push(true);
+            else boolArray.push(false);
+        }
+    }
+    else {
+        if (maxPanelsPerString == null || maxPanelsPerString == undefined) throw "Missing maxPanelsPerString: call CalculateMaxPanelsPerString";
+        for (let i = 0; i < modulesPerString.length; ++i) {
+            if (modulesPerString[i] <= maxPanelsPerString && modulesPerString[i] >= inverter.min_num_modules_per_string) boolArray.push(true);
+            else boolArray.push(false);
+        }
+    }
+    return boolArray;
+}
+
+/**
+ * returns an array of the number of inverters found in each string
+ * This is a unique value for multiple input inverters
+ * Its only necessary to call this function when the inverter.type === "Micro"
+ * the values returned show up in the csv and are datalinked to cad
+ * @param {Array} modulesPerString list of the number of modules in the string 
+ * @param {Object} inverter the inverter object
+ */
 function GetNumInverters(modulesPerString, inverter) {
     if (inverter.type != 'Micro') throw "User specifies number of inverters";
-    if (inverter.manufacturer === "Enphase") {
-        let total = 0;
-        for (let i = 0; i < modulesPerString.length; ++i) {
-            total += modulesPerString[i];
-        }
-        return { totalInverters: total, invertersPerString: modulesPerString };
-    };
     let invertersPerString = [];
     let totalInv = 0;
     for (let i = 0; i < modulesPerString.length; ++i) {
-        let numInverters = Math.ceil(modulesPerString[i] / inverter.modules_per_inverter);
+        let numInverters = Math.ceil(modulesPerString[i] / inverter.modules_per_inverter); //modules_per_inverter == max connected panels or max panels per inverter
         invertersPerString.push(numInverters);
         totalInv += numInverters;
     }
@@ -506,4 +564,4 @@ function GetNumInverters(modulesPerString, inverter) {
     return { totalInverters: totalInv, invertersPerString: invertersPerString };
 }
 
-module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters };
+module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters, ValidateStringSizes, CalculateMaxPanelsPerString, CalculateCurrentPerString };
