@@ -577,14 +577,18 @@ function GetNumInverters(modulesPerString, inverter) {
  * @param {Float} systemSize  call CalculateSystemSize
  * @param {Object} inverter only applies to inverter.type != "Micro"
  * @param {Integer} numInverters this should only be 1 or 2 for string/optimized inverters
- * @param {Integer} ratioThreshold defaults to 125, some inverters can be 130 (ask Jake)
+ * @param {Integer} ratioThreshold comes from the company object (preferred acDcRatio which is usually 125)
+ * Note: requires "Rated AC Power" and "Max Input Power" to be filled out in the inverter object
+ * company object needs field "Preferred DC AC Ratio"
  */
 function dcAcRatio(systemSize, inverter, numInverters, ratioThreshold) {
-    if (ratioThreshold == undefined || ratioThreshold == null) ratioThreshold = 125;
+    if (ratioThreshold == undefined || ratioThreshold == null) {
+        ratioThreshold = (Math.round(inverter.max_dc_input_power / inverter.rated_ac_power) * 100);
+    }
     let ratio = Math.round(((systemSize * 1000) / inverter.rated_ac_power) * 100) / numInverters; // percentage
     let valid = false;
     if (ratio <= ratioThreshold) valid = true;
     return { ratio: ratio, valid: valid };
 }
 
-module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters, ValidateStringSizes, CalculateMaxPanelsPerString, CalculateCurrentPerString };
+module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters, ValidateStringSizes, CalculateMaxPanelsPerString, CalculateCurrentPerString, dcAcRatio };
