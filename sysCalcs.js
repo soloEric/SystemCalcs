@@ -583,7 +583,7 @@ function dcAcRatio(systemSize, inverter, numInverters, ratioThreshold) {
     if (ratioThreshold == undefined || ratioThreshold == null) ratioThreshold = 125;
     let ratio = Math.round(((systemSize * 1000) / inverter.rated_ac_power) * 100) / numInverters; // percentage
     let valid = false;
-    if (ration <= ratioThreshold) valid = true;
+    if (ratio <= ratioThreshold) valid = true;
     return { ratio: ratio, valid: valid };
 }
 
