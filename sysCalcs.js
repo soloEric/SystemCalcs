@@ -570,7 +570,8 @@ function GetNumInverters(modulesPerString, inverter) {
  * This tells the designer if they need to upsize or downsize the inverter object (switch to 
  * a smaller or larger inverter)
  * Intended to be called on the equipment info page of the Cad tool
- * this will be called each time the inverter object is selected/changed
+ * this will be called each time the inverter object is selected/changed (designer needs to be able to 
+ * change the selected equipment)
  * display the ratio value to the designer along with a message indicating the value is 
  * valid or not, eg. if valid == true msg("Inverter size is valid")
  * if valid == false msg("Inverter size is too small")
