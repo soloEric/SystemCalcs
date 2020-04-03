@@ -488,7 +488,7 @@ function VoltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltD
  * @param {Object} solarModule the solar module object 
  */
 function CalculateSystemSize(totalModules, solarModule) {
-    return totalModules * solarModule.max_output_power; // max_output_power is wattage
+    return totalModules * solarModule.max_output_power; // max_output_power is wattage (float)
 }
 /**
  * returns an array of the output current for each string
@@ -508,8 +508,8 @@ function CalculateCurrentPerString(inverter, invertersPerString) {
 /**
  * returns the upper bound value of the max panels that can be in any string, used in ValidateStringsSizes
  * this is meant for when inverter.type != 'Micro'
- * @param {*} inverter 
- * @param {*} solarModule 
+ * @param {Object} inverter 
+ * @param {Object} solarModule 
  */
 function CalculateMaxPanelsPerString(inverter, solarModule) { // non micro
     let maxPanelsPerString = Math.floor(inverter.max_power_per_string / (solarModule.max_power));
@@ -563,6 +563,28 @@ function GetNumInverters(modulesPerString, inverter) {
     }
 
     return { totalInverters: totalInv, invertersPerString: invertersPerString };
+}
+
+/**
+ * This returns an object showing the designer the DC:AC ratio and whether it is valid
+ * This tells the designer if they need to upsize or downsize the inverter object (switch to 
+ * a smaller or larger inverter)
+ * Intended to be called on the equipment info page of the Cad tool
+ * this will be called each time the inverter object is selected/changed
+ * display the ratio value to the designer along with a message indicating the value is 
+ * valid or not, eg. if valid == true msg("Inverter size is valid")
+ * if valid == false msg("Inverter size is too small")
+ * @param {Float} systemSize  call CalculateSystemSize
+ * @param {Object} inverter only applies to inverter.type != "Micro"
+ * @param {Integer} numInverters this should only be 1 or 2 for string/optimized inverters
+ * @param {Integer} ratioThreshold defaults to 125, some inverters can be 130 (ask Jake)
+ */
+function dcAcRatio(systemSize, inverter, numInverters, ratioThreshold) {
+    if (ratioThreshold == undefined || ratioThreshold == null) ratioThreshold = 125;
+    let ratio = Math.round(((systemSize * 1000) / inverter.rated_ac_power) * 100) / numInverters; // percentage
+    let valid = false;
+    if (ration <= ratioThreshold) valid = true;
+    return { ratio: ratio, valid: valid };
 }
 
 module.exports = { CalculateSolarOcpd, GetACDiscoSize, GetSegmentWireSize, GetWireSchedule, CalculateWholeSystem, CalculateSystemSize, GetNumInverters, ValidateStringSizes, CalculateMaxPanelsPerString, CalculateCurrentPerString };
