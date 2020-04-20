@@ -517,6 +517,7 @@ function CalculateMaxPanelsPerString(inverter, solarModule) { // non micro
 }
 
 /**
+ * Don't Use this anymore
  * Validate user inputs for panels per string entered
  * returns an array indicating which strings are valid (true) and which strings are invalid (false)
  * @param {Array} modulesPerString number of panels in the string being validated
