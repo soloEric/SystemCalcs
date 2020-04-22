@@ -218,14 +218,14 @@ describe("System Calc Tests:", () => {
             max_voltage_drop: 3.0,
             type: "Optimized"
         };
-        solarModule = { // Axitec AC-280M/156-60S
-            open_circuit_voltage: 31.8,
-            short_circuit_current: 9.75
+        solarModule = { // Trina 320W
+            open_circuit_voltage: 40.3,
+            short_circuit_current: 10.2
         };
         optimizer = { // p320
             output_current: 15
         };
-        let ret = system.GetWireSchedule(5, [{segment: 4, distance: 35}], 2, inverter, [13, 13, 13, 13], solarModule, optimizer, true, false);
+        let ret = system.GetWireSchedule(5, [], 2, inverter, [15, 14, 14, 14], solarModule, optimizer, true, false);
         for (let i = 0; i < ret.schedule.length; ++i) {
             console.log(`TAG ${ret.schedule[i].tagNum}`);
             console.log("Schedule Item:");

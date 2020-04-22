@@ -54,6 +54,8 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
 
     let firstSegAfterInv = GetFirstSegAfterInv(modulesPerString);
 
+    let firstSegAfterCombiner = (inverter.type !== 'Micro' && numInverters > 1)? firstSegAfterInv + 1 : null;    
+    
     let material;
     if (copperBool) material = "Copper";
     else material = "Aluminum";
@@ -69,10 +71,12 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
                 isTrenched = true;
             }
         }
-        let gauge = GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, tapBool, firstSegAfterInv);
+        let newInverterCount = (firstSegAfterCombiner && i < firstSegAfterCombiner)? 1 : numInverters;
+
+        let gauge = GetSegmentWireSize(modulesPerString, newInverterCount, inverter, solarModule, optimizer, dist, i, copperBool, tapBool, firstSegAfterInv);
 
         // Post MVP: refer to table on derate factor per number of current carrying conductors
-        let numPosOrNegWires = CalculateNumCurrentCarryingConductors(i, modulesPerString, numInverters, inverter, firstSegAfterInv);
+        let numPosOrNegWires = CalculateNumCurrentCarryingConductors(i, modulesPerString, newInverterCount, inverter, firstSegAfterInv);
 
         //wire type comes from either company best practice or lookup table, these values are for testing
         wireType = "THWN test"
@@ -93,7 +97,7 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
         let groundGauge;
         groundWireTypeAlt = "";
         groundWireType = "Test Ground type";
-        groundGauge = GetSegmentGroundSize(pvBackfeed, modulesPerString, numInverters, inverter, solarModule, optimizer, dist, i, copperBool, firstSegAfterInv);
+        groundGauge = GetSegmentGroundSize(pvBackfeed, modulesPerString, newInverterCount, inverter, solarModule, optimizer, dist, i, copperBool, firstSegAfterInv);
         wires.push(new WS.Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
         let conduitCallout = CalculateConduitSize(wires, isTrenched);
@@ -488,7 +492,7 @@ function VoltageDropToString(gauge, dist, maxOutputVolt, maxOutputCurrent, voltD
  * @param {Object} solarModule the solar module object 
  */
 function CalculateSystemSize(totalModules, solarModule) {
-    return totalModules * solarModule.max_output_power; // max_output_power is wattage (float)
+    return (totalModules * solarModule.max_output_power)/1000; // max_output_power is wattage (float)
 }
 /**
  * returns an array of the output current for each string
