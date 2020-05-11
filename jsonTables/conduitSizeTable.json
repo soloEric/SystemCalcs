@@ -38,5 +38,21 @@
   {
     "conduitCallout": "3\" Liquid Tight or EMT",
     "floatSize": "3"
+  },
+  {
+    "conduitCallout": "3 1/4\" Liquid Tight or EMT",
+    "floatSize": "3.25"
+  },
+  {
+    "conduitCallout": "3 1/2\" Liquid Tight or EMT",
+    "floatSize": "3.5"
+  },
+  {
+    "conduitCallout": "3 3/4\" Liquid Tight or EMT",
+    "floatSize": "3.75"
+  },
+  {
+    "conduitCallout": "4\" Liquid Tight or EMT",
+    "floatSize": "4"
   }
 ]

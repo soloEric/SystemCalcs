@@ -52,9 +52,9 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
     const wireSchedule = [];
     const vDropPrintOuts = [];
 
-    let firstSegAfterInv = GetFirstSegAfterInv(modulesPerString);
+    const firstSegAfterInv = GetFirstSegAfterInv(modulesPerString);
 
-    let firstSegAfterCombiner = (inverter.type !== 'Micro' && numInverters > 1)? firstSegAfterInv + 1 : null;    
+    const firstSegAfterCombiner = (inverter.type !== 'Micro' && numInverters > 1)? firstSegAfterInv + 1 : null;    
     
     let material;
     if (copperBool) material = "Copper";
@@ -92,12 +92,16 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
 
         if (i >= firstSegAfterInv) {
             wires.push(new WS.Wire(1, gauge, wireType, wireTypeAlt, material, "NEUTRAL"));
-        }
+        } 
+        // else {
+        //     wires.push(null);
+        // }
 
         let groundGauge;
         groundWireTypeAlt = "";
         groundWireType = "Test Ground type";
-        groundGauge = GetSegmentGroundSize(pvBackfeed, modulesPerString, newInverterCount, inverter, solarModule, optimizer, dist, i, copperBool, firstSegAfterInv);
+        groundGauge = GetSegmentGroundSize(pvBackfeed, modulesPerString, newInverterCount, inverter, solarModule, optimizer, dist, i, firstSegAfterInv);
+
         wires.push(new WS.Wire(1, groundGauge, groundWireType, groundWireTypeAlt, material, "GROUND"));
 
         let conduitCallout = CalculateConduitSize(wires, isTrenched);
@@ -135,7 +139,7 @@ function GetWireSchedule(numSegments, trenchSegments, numInverters, inverter, mo
 function CalculateNumCurrentCarryingConductors(segment, modulesPerString, numInverters, inverter, firstSegAfterInv) {
     if (segment == 1) return 2;
     else if (segment > 1 && segment < firstSegAfterInv) { // segment 2 or 3
-        if (inverter.type == "Micro" && segment == 3) return modulesPerString.length;
+        if (inverter.type == "Micro" && segment == 3) return modulesPerString.length * 2;
         else if (segment == 3) return (modulesPerString.length / numInverters) * 2;
         else return 2;
     } else return 2;
@@ -167,7 +171,7 @@ function CalculateConduitSize(wires, isTrenched) {
     if (conduitSize < 0.75) {
         conduitSize = 0.75;
     }
-    if (conduitSize > 3) throw "Error at CalculateConduitSize: Conduit size returned larger than max known size";
+    if (conduitSize > 4) throw "Error at CalculateConduitSize: Conduit size returned larger than max known size";
 
     if (isTrenched) {
         for (let i = 0; i < possibleTrenchConduitSizes.length; ++i) {
@@ -205,7 +209,7 @@ function CalculateConduitSize(wires, isTrenched) {
  */
 function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, tapBool, firstSegAfterInv) {
     let ocpd = DetermineBackfeed(numInverters, inverter.max_output_current);
-    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv)
+    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, firstSegAfterInv)
 
     let pair;
 
@@ -273,9 +277,9 @@ function GetSegmentWireSize(modulesPerString, numInverters, inverter, solarModul
     else return pair;
 }
 
-function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv) {
+function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, firstSegAfterInv) {
     if (segment < 1) throw `Error at GetMaxOutCurrentMaxOutVolt: Invalid segment number: must be 1 or greater. Segment number was ${segment}`;
-    if (!segment || !copperBool) throw "Error at GetMaxOutCurrentMaxOutVolt: missing segment number or copperBool";
+    if (!segment) throw "Error at GetMaxOutCurrentMaxOutVolt: missing segment number";
     if (inverter == null || inverter == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Missing inverter object";
     if (dist == null || dist == undefined) throw "Error at GetMaxOutCurrentMaxOutVolt: Distance field cannot be null";
 
@@ -284,7 +288,7 @@ function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, so
     let dcBool;
 
     if (inverter.type === "Micro") {
-        if (segment == 1 && inverter.manufacturer === "Enphase") {
+        if (segment < firstSegAfterInv && inverter.manufacturer === "Enphase") {
             return GetEnphaseCalc(modulesPerString, inverter);
         }
 
@@ -320,8 +324,8 @@ function GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, so
 }
 
 // for MVP this is just a table lookup 
-function GetSegmentGroundSize(ocpd, modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv) {
-    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, copperBool, firstSegAfterInv);
+function GetSegmentGroundSize(ocpd, modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, firstSegAfterInv) {
+    let inputs = GetMaxOutCurrentMaxOutVolt(modulesPerString, numInverters, inverter, solarModule, optimizer, dist, segment, firstSegAfterInv);
     const oOcpd = ocpdTable.find(function (e) {
         if (segment >= firstSegAfterInv) {
             return e.pvBackfeed === `${ocpd}`;
@@ -498,6 +502,7 @@ function CalculateSystemSize(totalModules, solarModule) {
  * returns an array of the output current for each string
  * this is applicable to inverter.type === 'Micro'
  * these values go into the csv and are datalinked into cad
+ * call GetNumInverters prior
  * @param {Object} inverter 
  * @param {Array} invertersPerString call GetNumInverters for this array 
  */
@@ -589,7 +594,7 @@ function GetNumInverters(modulesPerString, inverter) {
  */
 function dcAcRatio(systemSize, inverter, numInverters, ratioThreshold) {
     if (ratioThreshold == undefined || ratioThreshold == null) {
-        ratioThreshold = (Math.round(inverter.max_dc_input_power / inverter.rated_ac_power) * 100);
+        ratioThreshold = Math.round((inverter.max_dc_input_power / inverter.rated_ac_power) * 100);
     }
     let ratio = Math.round(((systemSize * 1000) / inverter.rated_ac_power) * 100) / numInverters; // percentage
     let valid = false;
