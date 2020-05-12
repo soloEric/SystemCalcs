@@ -509,7 +509,7 @@ function CalculateSystemSize(totalModules, solarModule) {
 function CalculateCurrentPerString(inverter, invertersPerString) {
     let currentPerString = [];
     for (let i = 0; i < invertersPerString.length; ++i) {
-        currentPerString.push(inverter.max_output_power * invertersPerString[i]);
+        currentPerString.push(inverter.max_output_current * invertersPerString[i]);
     }
     return currentPerString;
 }
